@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Plane, Gift, Sun, Heart, Trash2, Calendar, List, Filter, Settings } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, orderBy, query, doc, updateDoc, deleteDoc, where, writeBatch, increment, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 import RequestTimeOffModal from '../components/RequestTimeOffModal';
 import TeamCalendar from '../components/TeamCalendar';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
@@ -14,11 +15,14 @@ const BalanceCard = ({ icon, title, balance, bgColor, iconColor }) => ( <div cla
 const MainTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 
 function TimeOff() {
+  // --- THE UPGRADE IS HERE ---
+  // We now get the employee list and its loading state from our fast, central "App Brain".
+  const { employees, loading: employeesLoading } = useAppContext();
+
   const [allRequests, setAllRequests] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [myTeam, setMyTeam] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -36,47 +40,60 @@ function TimeOff() {
   const currentUser = auth.currentUser;
 
   useEffect(() => {
-    if (!currentUser) { setLoading(false); return; }
+    if (!currentUser) { 
+      setRequestsLoading(false);
+      return; 
+    }
 
-    const unsubscribers = [];
-    
+    // This page still needs to fetch its own specific data (policies and requests)
     const policyRef = doc(db, 'companyPolicies', 'timeOff');
-    unsubscribers.push(onSnapshot(policyRef, (docSnap) => {
-      if (docSnap.exists()) setWeekends(docSnap.data().weekends || { sat: true, sun: true });
-    }));
-    
     const holidaysColRef = collection(policyRef, 'holidays');
-    unsubscribers.push(onSnapshot(holidaysColRef, (snapshot) => {
+    const unsubPolicy = onSnapshot(policyRef, (docSnap) => {
+      if (docSnap.exists()) setWeekends(docSnap.data().weekends || { sat: true, sun: true });
+    });
+    const unsubHolidays = onSnapshot(holidaysColRef, (snapshot) => {
       setHolidays(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }));
-
-    const employeesQuery = query(collection(db, 'employees'));
-    unsubscribers.push(onSnapshot(employeesQuery, (snapshot) => {
-        const employeeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setEmployees(employeeList);
-        setCurrentUserProfile(employeeList.find(e => e.email === currentUser.email));
-        setMyTeam(employeeList.filter(e => e.managerEmail === currentUser.email));
-    }));
+    });
     
     const requestsQuery = query(collection(db, 'timeOffRequests'), orderBy('requestedAt', 'desc'));
-    unsubscribers.push(onSnapshot(requestsQuery, (reqSnapshot) => {
-      const employeeMap = new Map(employees.map(e => [e.email, e.name]));
-      const allRequestsWithName = reqSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, employeeName: employeeMap.get(doc.data().userEmail) || 'Unknown' }));
-      setAllRequests(allRequestsWithName);
-      setLoading(false);
-    }));
+    const unsubRequests = onSnapshot(requestsQuery, (reqSnapshot) => {
+      const allRequestsData = reqSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setAllRequests(allRequestsData);
+      setRequestsLoading(false);
+    });
     
-    return () => unsubscribers.forEach(unsub => unsub());
+    return () => { 
+        unsubPolicy(); 
+        unsubHolidays(); 
+        unsubRequests();
+    };
+  }, [currentUser]);
+
+  // This effect now runs whenever the global employee list from the "App Brain" changes.
+  useEffect(() => {
+    if (currentUser && employees.length > 0) {
+        setCurrentUserProfile(employees.find(e => e.email === currentUser.email));
+        setMyTeam(employees.filter(e => e.managerEmail === currentUser.email));
+    }
   }, [currentUser, employees]);
+
+  const requestsWithName = useMemo(() => {
+    if (employees.length === 0) return allRequests;
+    const employeeMap = new Map(employees.map(e => [e.email, e.name]));
+    return allRequests.map(req => ({
+        ...req,
+        employeeName: employeeMap.get(req.userEmail) || 'Unknown'
+    }));
+  }, [allRequests, employees]);
 
   const filteredRequests = useMemo(() => {
     if (!currentUser) return [];
-    return allRequests.filter(req => {
+    return requestsWithName.filter(req => {
         if (scope === 'Mine' && req.userEmail !== currentUser.email) return false;
         if (scope === 'My Team' && !myTeam.some(e => e.email === req.userEmail)) return false;
         return true;
     });
-  }, [allRequests, scope, myTeam, currentUser]);
+  }, [requestsWithName, scope, myTeam, currentUser]);
 
   const addHistoryLog = async (requestId, action) => {
     const historyColRef = collection(db, 'timeOffRequests', requestId, 'history');
@@ -148,7 +165,7 @@ function TimeOff() {
       setIsDetailsModalOpen(false);
       setTimeout(() => {
         setIsRescheduleModalOpen(true);
-      }, 100); // Small delay to allow details modal to close
+      }, 100);
   };
 
   const canCancel = (request) => {
@@ -175,6 +192,8 @@ function TimeOff() {
           handleRowClick(request);
       }, 300);
   };
+
+  const loading = employeesLoading || requestsLoading;
 
   return (
     <>

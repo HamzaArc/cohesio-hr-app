@@ -123,6 +123,9 @@ function RunPayroll() {
     }));
   };
 
+  // --- THE FIX IS HERE ---
+  // These calculations are now in the main function scope, so they are
+  // accessible by the JSX for both Step 1 and Step 2.
   const totalGrossPay = payrollData.reduce((total, emp) => {
     return total + emp.lineItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
   }, 0);

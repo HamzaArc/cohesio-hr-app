@@ -1,26 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { X, Plus, Trash2 } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 
 function CreateOffCyclePayrollModal({ isOpen, onClose, onPayrollRun }) {
-  const [employees, setEmployees] = useState([]);
+  const { employees } = useAppContext(); // Use the App Brain
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [payDay, setPayDay] = useState('');
   const [reason, setReason] = useState('Final Pay');
   const [lineItems, setLineItems] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      const fetchEmployees = async () => {
-        const snapshot = await getDocs(collection(db, 'employees'));
-        setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      };
-      fetchEmployees();
-    }
-  }, [isOpen]);
 
   const handleAddLineItem = () => {
     setLineItems([...lineItems, { id: Date.now(), description: '', total: 0 }]);
@@ -55,7 +46,7 @@ function CreateOffCyclePayrollModal({ isOpen, onClose, onPayrollRun }) {
         employeePayData: [{
             employeeId: selectedEmployee.id,
             employeeName: selectedEmployee.name,
-            lineItems: lineItems.map(({id, ...rest}) => rest) // Remove temporary id
+            lineItems: lineItems.map(({id, ...rest}) => rest)
         }],
         runAt: serverTimestamp(),
         type: 'Off-Cycle'

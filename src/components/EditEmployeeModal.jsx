@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { X } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 
 function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
+  const { employees } = useAppContext(); // Use the global state
   const [formData, setFormData] = useState({});
-  const [allEmployees, setAllEmployees] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-        const fetchEmployees = async () => {
-            const snapshot = await getDocs(collection(db, 'employees'));
-            // Exclude the current employee from the list of potential managers
-            setAllEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(e => e.id !== employee?.id));
-        };
-        fetchEmployees();
-    }
     if (employee) {
       setFormData({
         name: employee.name || '',
@@ -36,7 +29,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
         personalBalance: employee.personalBalance ?? 3,
       });
     }
-  }, [isOpen, employee]);
+  }, [employee]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -69,6 +62,9 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
 
   if (!isOpen || !employee) return null;
 
+  // Exclude the current employee from the list of potential managers
+  const potentialManagers = employees.filter(e => e.id !== employee.id);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-full">
@@ -91,7 +87,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
             <div><label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label><select id="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option value="active">Active</option><option value="onboarding">Onboarding</option></select></div>
             <div><label htmlFor="employmentType" className="block text-sm font-medium text-gray-700">Employment Type</label><input type="text" id="employmentType" value={formData.employmentType} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
             <div><label htmlFor="compensation" className="block text-sm font-medium text-gray-700">Compensation</label><input type="text" id="compensation" value={formData.compensation} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
-            <div className="md:col-span-2"><label htmlFor="managerEmail" className="block text-sm font-medium text-gray-700">Reports To</label><select id="managerEmail" value={formData.managerEmail} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option value="">No Manager</option>{allEmployees.map(emp => <option key={emp.id} value={emp.email}>{emp.name}</option>)}</select></div>
+            <div className="md:col-span-2"><label htmlFor="managerEmail" className="block text-sm font-medium text-gray-700">Reports To</label><select id="managerEmail" value={formData.managerEmail} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option value="">No Manager</option>{potentialManagers.map(emp => <option key={emp.id} value={emp.email}>{emp.name}</option>)}</select></div>
 
             <h3 className="md:col-span-2 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Time Off Balances</h3>
             <div><label htmlFor="vacationBalance" className="block text-sm font-medium text-gray-700">Vacation Days</label><input type="number" id="vacationBalance" value={formData.vacationBalance} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>

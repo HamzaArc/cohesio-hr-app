@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import CreateOffCyclePayrollModal from '../components/CreateOffCyclePayrollModal';
-import PayrollSettings from '../components/PayrollSettings'; // Import the new component
+import PayrollSettings from '../components/PayrollSettings';
 
 const PayrollTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 

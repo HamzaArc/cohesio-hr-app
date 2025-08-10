@@ -1,28 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { X } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 
 function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
+  const { employees } = useAppContext(); // Use the global state for the manager dropdown
   const [formData, setFormData] = useState({
     name: '', email: '', position: '', department: '', hireDate: '', status: 'active',
     phone: '', gender: '', compensation: '', employmentType: 'Full-time',
     vacationBalance: 15, sickBalance: 5, personalBalance: 3,
-    managerEmail: '', // New field for manager
+    managerEmail: '',
   });
-  const [allEmployees, setAllEmployees] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      const fetchEmployees = async () => {
-        const snapshot = await getDocs(collection(db, 'employees'));
-        setAllEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      };
-      fetchEmployees();
-    }
-  }, [isOpen]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -89,8 +80,7 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
             <div><label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label><select id="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option value="active">Active</option><option value="onboarding">Onboarding</option></select></div>
             <div><label htmlFor="employmentType" className="block text-sm font-medium text-gray-700">Employment Type</label><input type="text" id="employmentType" value={formData.employmentType} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
             <div><label htmlFor="compensation" className="block text-sm font-medium text-gray-700">Compensation</label><input type="text" id="compensation" value={formData.compensation} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
-            {/* --- NEW: Manager Selector --- */}
-            <div className="md:col-span-2"><label htmlFor="managerEmail" className="block text-sm font-medium text-gray-700">Reports To</label><select id="managerEmail" value={formData.managerEmail} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option value="">No Manager</option>{allEmployees.map(emp => <option key={emp.id} value={emp.email}>{emp.name}</option>)}</select></div>
+            <div className="md:col-span-2"><label htmlFor="managerEmail" className="block text-sm font-medium text-gray-700">Reports To</label><select id="managerEmail" value={formData.managerEmail} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option value="">No Manager</option>{employees.map(emp => <option key={emp.id} value={emp.email}>{emp.name}</option>)}</select></div>
 
             <h3 className="md:col-span-2 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Time Off Balances</h3>
             <div><label htmlFor="vacationBalance" className="block text-sm font-medium text-gray-700">Vacation Days</label><input type="number" id="vacationBalance" value={formData.vacationBalance} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>

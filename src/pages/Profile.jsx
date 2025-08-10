@@ -1,39 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { auth } from '../firebase';
 import { Edit2 } from 'lucide-react';
 import EditEmployeeModal from '../components/EditEmployeeModal';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 
 const ProfileTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 const InfoSection = ({ title, children, onEdit }) => ( <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-800">{title}</h3>{onEdit && <button onClick={onEdit} className="text-sm font-semibold text-blue-600 hover:underline">Edit</button>}</div><div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">{children}</div></div> );
 const InfoField = ({ label, value }) => ( <div><p className="text-xs text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value ?? 'N/A'}</p></div> );
 
 function Profile() {
+  // --- THE UPGRADE IS HERE ---
+  // We get the full employee list and loading state from our "App Brain".
+  const { employees, loading } = useAppContext();
+  
   const [activeTab, setActiveTab] = useState('Personal');
   const [employee, setEmployee] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  // This effect now runs when the global employee list is ready.
+  // It finds the current user's profile from that list.
   useEffect(() => {
     const currentUser = auth.currentUser;
-    if (!currentUser) { setLoading(false); return; }
-
-    setLoading(true);
-    const employeesRef = collection(db, 'employees');
-    const q = query(employeesRef, where("email", "==", currentUser.email));
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        setEmployee({ id: doc.id, ...doc.data() });
-      } else {
-        setEmployee(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (currentUser && employees.length > 0) {
+      const userProfile = employees.find(e => e.email === currentUser.email);
+      setEmployee(userProfile);
+    }
+  }, [employees]); // It runs whenever the global list changes.
 
   if (loading) return <div className="p-8">Loading Your Profile...</div>;
   if (!employee) return <div className="p-8">Could not find an employee profile linked to your account.</div>;
