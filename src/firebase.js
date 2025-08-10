@@ -1,29 +1,24 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// IMPORTANT: REPLACE THIS WITH YOUR ACTUAL CONFIG FROM THE FIREBASE WEBSITE
+// Read keys securely from the .env.local file
 const firebaseConfig = {
-  apiKey: "AIzaSyA_Y2MnLlPMoQYVa_aoxBtFYzq_yjI_jnQ",
-  authDomain: "cohesio-hr-system.firebaseapp.com",
-  projectId: "cohesio-hr-system",
-  storageBucket: "cohesio-hr-system.firebasestorage.app",
-  messagingSenderId: "723368615116",
-  appId: "1:723368615116:web:89a389988c08ecf13a7669",
-  measurementId: "G-3R45VRC6JQ"
+  apiKey: "AIzaSyCHudqIXSEMvoGSNfn_9rF4a4WkngAyl64",
+  authDomain: "cohesio-hr-v3.firebaseapp.com",
+  projectId: "cohesio-hr-v3",
+  storageBucket: "cohesio-hr-v3.firebasestorage.app",
+  messagingSenderId: "360270418022",
+  appId: "1:360270418022:web:a492ab07767064f9945da7"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
+// Initialize and export Firebase services
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Export the services so we can use them in other parts of our app
-export { auth, db };
+export { auth, db, storage };
