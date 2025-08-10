@@ -2,19 +2,23 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Edit, Trash, Users, UserCheck, Share2, Building } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc } from 'firebase/firestore';
 import AddEmployeeModal from '../components/AddEmployeeModal';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import OrgChart from '../components/OrgChart';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 
 const PeopleTab = ({ label, icon, active, onClick }) => ( <button onClick={onClick} className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{icon}{label}</button> );
 const EmployeeTable = ({ employees, onEdit, onDelete }) => ( <table className="w-full text-left"><thead><tr className="border-b border-gray-200"><th className="p-4 font-semibold text-gray-500 text-sm">Employee name</th><th className="p-4 font-semibold text-gray-500 text-sm">Position</th><th className="p-4 font-semibold text-gray-500 text-sm">Status</th><th className="p-4 font-semibold text-gray-500 text-sm">Department</th><th className="p-4 font-semibold text-gray-500 text-sm">Actions</th></tr></thead><tbody>{employees.map(emp => ( <tr key={emp.id} className="border-b border-gray-100 hover:bg-gray-50"><td className="p-4 flex items-center"><img src={`https://placehold.co/40x40/E2E8F0/4A5568?text=${emp.name.charAt(0)}`} alt={emp.name} className="w-10 h-10 rounded-full mr-4" /><Link to={`/people/${emp.id}`} className="font-semibold text-gray-800 hover:text-blue-600">{emp.name}</Link></td><td className="p-4 text-gray-700">{emp.position}</td><td className="p-4"><span className={`capitalize text-xs font-bold py-1 px-2 rounded-full ${emp.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{emp.status}</span></td><td className="p-4 text-gray-700">{emp.department}</td><td className="p-4"><div className="flex gap-2"><button onClick={() => onEdit(emp)} className="p-2 hover:bg-gray-200 rounded-full"><Edit size={16} className="text-gray-600" /></button><button onClick={() => onDelete(emp)} className="p-2 hover:bg-gray-200 rounded-full"><Trash size={16} className="text-red-600" /></button></div></td></tr> ))}</tbody></table> );
 
 function People() {
-  const [allEmployees, setAllEmployees] = useState([]);
+  // --- THE UPGRADE IS HERE ---
+  // We now get the employee list and loading state from our fast, central "App Brain".
+  // This page no longer needs its own useEffect to fetch data.
+  const { employees, loading } = useAppContext();
+  
   const [myTeam, setMyTeam] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Directory');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -23,30 +27,16 @@ function People() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
     const currentUser = auth.currentUser;
-    if (!currentUser) { setLoading(false); return; }
-
-    const employeesCollection = collection(db, "employees");
-    const q = query(employeesCollection, orderBy("name"));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const employeesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAllEmployees(employeesList);
-      
-      const teamList = employeesList.filter(emp => emp.managerEmail === currentUser.email);
+    if (currentUser && employees.length > 0) {
+      const teamList = employees.filter(emp => emp.managerEmail === currentUser.email);
       setMyTeam(teamList);
+    }
+  }, [employees]); // Recalculate myTeam whenever the global employee list changes
 
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // --- NEW: Group employees by department ---
   const departments = useMemo(() => {
     const grouped = {};
-    allEmployees.forEach(employee => {
+    employees.forEach(employee => {
         const dept = employee.department || 'Unassigned';
         if (!grouped[dept]) {
             grouped[dept] = [];
@@ -54,11 +44,20 @@ function People() {
         grouped[dept].push(employee);
     });
     return Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [allEmployees]);
+  }, [employees]);
 
   const handleEditClick = (employee) => { setSelectedEmployee(employee); setIsEditModalOpen(true); };
   const handleDeleteClick = (employee) => { setSelectedEmployee(employee); setIsDeleteModalOpen(true); };
-  const handleDeleteConfirm = async () => { /* ... */ };
+  const handleDeleteConfirm = async () => {
+    if (!selectedEmployee) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'employees', selectedEmployee.id));
+      setIsDeleteModalOpen(false);
+      setSelectedEmployee(null);
+    } catch (error) { console.error("Error deleting employee: ", error); } 
+    finally { setIsDeleting(false); }
+  };
 
   const renderContent = () => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
@@ -67,7 +66,7 @@ function People() {
         case 'My Team':
             return <EmployeeTable employees={myTeam} onEdit={handleEditClick} onDelete={handleDeleteClick} />;
         case 'Org Chart':
-            return <OrgChart employees={allEmployees} />;
+            return <OrgChart employees={employees} />;
         case 'Departments':
             return (
                 <div className="space-y-6">
@@ -93,7 +92,7 @@ function People() {
             );
         case 'Directory':
         default:
-            return <EmployeeTable employees={allEmployees} onEdit={handleEditClick} onDelete={handleDeleteClick} />;
+            return <EmployeeTable employees={employees} onEdit={handleEditClick} onDelete={handleDeleteClick} />;
     }
   };
 

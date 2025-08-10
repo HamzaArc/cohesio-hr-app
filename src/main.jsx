@@ -6,7 +6,9 @@ import { AppProvider } from './contexts/AppContext.jsx'; // Import our new provi
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AppProvider> {/* Wrap the entire App */}
+    {/* By wrapping our App in the AppProvider, every component inside
+        can now access the shared employee data. */}
+    <AppProvider>
       <App />
     </AppProvider>
   </React.StrictMode>,
