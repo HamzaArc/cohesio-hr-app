@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash, Check } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, onSnapshot, orderBy, query, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 import AddTemplateModal from '../components/AddTemplateModal';
 import EditTemplateModal from '../components/EditTemplateModal';
 import CreateReviewModal from '../components/CreateReviewModal';
@@ -11,11 +12,11 @@ import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 const PerformanceTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 
 function Performance() {
+  const { employees, loading: employeesLoading } = useAppContext(); // Use the App Brain
   const [activeTab, setActiveTab] = useState('Reviews');
   const [templates, setTemplates] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isEditTemplateModalOpen, setIsEditTemplateModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -26,20 +27,17 @@ function Performance() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setLoading(true);
+    setLoadingData(true);
     const templatesQuery = query(collection(db, 'reviewTemplates'), orderBy('created', 'desc'));
     const unsubTemplates = onSnapshot(templatesQuery, snap => setTemplates(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-
-    const employeesQuery = query(collection(db, 'employees'), orderBy('name'));
-    const unsubEmployees = onSnapshot(employeesQuery, snap => setEmployees(snap.docs.map(doc => ({id: doc.id, ...doc.data()}))));
 
     const reviewsQuery = query(collection(db, 'reviews'), orderBy('created', 'desc'));
     const unsubReviews = onSnapshot(reviewsQuery, snap => {
         setReviews(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        setLoading(false);
+        setLoadingData(false);
     });
 
-    return () => { unsubTemplates(); unsubEmployees(); unsubReviews(); };
+    return () => { unsubTemplates(); unsubReviews(); };
   }, []);
 
   const employeeMap = useMemo(() => new Map(employees.map(e => [e.id, e.name])), [employees]);
@@ -52,6 +50,19 @@ function Performance() {
   const handleReviewCreated = (newReviewId) => {
     setIsReviewModalOpen(false);
     addHistoryLog(newReviewId, 'Created');
+  };
+
+  const handleEditTemplateClick = (e, template) => { e.stopPropagation(); setSelectedItem(template); setIsEditTemplateModalOpen(true); };
+  const handleDeleteClick = (e, item, type) => { e.stopPropagation(); setSelectedItem(item); setDeleteType(type); setIsDeleteModalOpen(true); };
+  
+  const handleDeleteConfirm = async () => {
+    if (!selectedItem) return;
+    setIsDeleting(true);
+    const collectionName = deleteType === 'template' ? 'reviewTemplates' : 'reviews';
+    await deleteDoc(doc(db, collectionName, selectedItem.id));
+    setIsDeleteModalOpen(false);
+    setSelectedItem(null);
+    setIsDeleting(false);
   };
 
   const handleUpdateReviewStatus = async (e, reviewId, newStatus) => {
@@ -68,18 +79,7 @@ function Performance() {
     }
   };
 
-  const handleEditTemplateClick = (e, template) => { e.stopPropagation(); setSelectedItem(template); setIsEditTemplateModalOpen(true); };
-  const handleDeleteClick = (e, item, type) => { e.stopPropagation(); setSelectedItem(item); setDeleteType(type); setIsDeleteModalOpen(true); };
-  
-  const handleDeleteConfirm = async () => {
-    if (!selectedItem) return;
-    setIsDeleting(true);
-    const collectionName = deleteType === 'template' ? 'reviewTemplates' : 'reviews';
-    await deleteDoc(doc(db, collectionName, selectedItem.id));
-    setIsDeleteModalOpen(false);
-    setSelectedItem(null);
-    setIsDeleting(false);
-  };
+  const loading = employeesLoading || loadingData;
 
   const renderContent = () => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;

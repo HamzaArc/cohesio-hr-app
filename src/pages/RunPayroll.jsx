@@ -3,12 +3,14 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, onSnapshot, collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Check, Plus, Trash2, Banknote } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 const Step = ({ number, label, isActive }) => ( <div className="flex items-center"><div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>{isActive ? <Check size={20} /> : number}</div><p className={`ml-3 font-semibold ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>{label}</p></div> );
 const parseDateString = (dateString) => { try { const date = new Date(dateString); if (isNaN(date.getTime())) throw new Error(); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().split('T')[0]; } catch (e) { console.error("Invalid date string:", dateString); return null; }};
 
 function RunPayroll() {
   const { payPeriodId } = useParams();
+  const { employees, loading: employeesLoading } = useAppContext();
   const [payPeriod, setPayPeriod] = useState(null);
   const [payrollData, setPayrollData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,20 +24,19 @@ function RunPayroll() {
         if (docSnap.exists()) {
             const periodData = { id: docSnap.id, ...docSnap.data() };
             setPayPeriod(periodData);
-            if (payrollData.length === 0) {
-                fetchPayrollData(periodData);
-            }
         } else { setLoading(false); }
     });
     return () => unsubPayPeriod();
   }, [payPeriodId]);
 
+  useEffect(() => {
+    if (payPeriod && employees.length > 0) {
+        fetchPayrollData(payPeriod);
+    }
+  }, [payPeriod, employees]);
+
   const fetchPayrollData = async (period) => {
     try {
-        const employeesQuery = query(collection(db, 'employees'));
-        const employeesSnapshot = await getDocs(employeesQuery);
-        const employeeList = employeesSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-
         const startDate = parseDateString(period.periodSpans.split(' – ')[0]);
         const endDate = parseDateString(period.periodSpans.split(' – ')[1]);
         if (!startDate || !endDate) throw new Error("Could not parse pay period dates.");
@@ -46,7 +47,7 @@ function RunPayroll() {
         const timeEntries = timeEntriesSnapshot.docs.map(doc => doc.data());
         const timeOffRequests = timeOffSnapshot.docs.map(doc => doc.data());
 
-        const calculatedData = employeeList.map(emp => {
+        const calculatedData = employees.map(emp => {
             const empTimeEntries = timeEntries.filter(e => e.userEmail === emp.email);
             const empTimeOff = timeOffRequests.filter(r => r.userEmail === emp.email);
             const regularHours = empTimeEntries.filter(e => e.hourType === 'Regular Hours').reduce((sum, e) => sum + e.hours, 0);
@@ -57,11 +58,8 @@ function RunPayroll() {
             if (emp.compensation) {
                 const compValue = parseFloat(emp.compensation.replace(/[^0-9.-]+/g,""));
                 if (!isNaN(compValue)) {
-                    if (emp.compensation.includes('/hour')) {
-                        hourlyRate = compValue;
-                    } else if (emp.compensation.includes('/year')) {
-                        hourlyRate = compValue / 2080;
-                    }
+                    if (emp.compensation.includes('/hour')) { hourlyRate = compValue; } 
+                    else if (emp.compensation.includes('/year')) { hourlyRate = compValue / 2080; }
                 }
             }
             
@@ -126,9 +124,7 @@ function RunPayroll() {
   // --- THE FIX IS HERE ---
   // These calculations are now in the main function scope, so they are
   // accessible by the JSX for both Step 1 and Step 2.
-  const totalGrossPay = payrollData.reduce((total, emp) => {
-    return total + emp.lineItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-  }, 0);
+  const totalGrossPay = payrollData.reduce((total, emp) => total + emp.lineItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0), 0);
   const totalTaxes = 0; // Placeholder
   const totalNetPay = totalGrossPay - totalTaxes;
 
@@ -157,7 +153,7 @@ function RunPayroll() {
     }
   };
 
-  if (loading) { return <div className="p-8">Loading Payroll Run...</div>; }
+  if (loading || employeesLoading) { return <div className="p-8">Loading Payroll Run...</div>; }
   if (!payPeriod) { return <div className="p-8">Pay Period not found.</div>; }
 
   return (

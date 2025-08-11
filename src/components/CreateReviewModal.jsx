@@ -2,27 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { X } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext'; // Import our new hook
 
 function CreateReviewModal({ isOpen, onClose, onReviewCreated }) {
+  const { employees } = useAppContext(); // Use the App Brain
   const [title, setTitle] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [templates, setTemplates] = useState([]);
-  const [employees, setEmployees] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      const fetchData = async () => {
+      const fetchTemplates = async () => {
         const templatesSnapshot = await getDocs(collection(db, 'reviewTemplates'));
         setTemplates(templatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        
-        const employeesSnapshot = await getDocs(collection(db, 'employees'));
-        setEmployees(employeesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       };
-      fetchData();
+      fetchTemplates();
     }
   }, [isOpen]);
 
@@ -36,7 +34,7 @@ function CreateReviewModal({ isOpen, onClose, onReviewCreated }) {
     setError('');
 
     try {
-      await addDoc(collection(db, 'reviews'), {
+      const newReviewRef = await addDoc(collection(db, 'reviews'), {
         title,
         templateId: selectedTemplate,
         employeeId: selectedEmployee,
@@ -44,7 +42,7 @@ function CreateReviewModal({ isOpen, onClose, onReviewCreated }) {
         status: 'In Progress',
         created: serverTimestamp(),
       });
-      onReviewCreated();
+      onReviewCreated(newReviewRef.id);
       handleClose();
     } catch (err) {
       setError('Failed to create review. Please try again.');
