@@ -1,35 +1,35 @@
+
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { X, Link, User, Users } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
-function EditDocumentModal({ isOpen, onClose, document, onDocumentUpdated }) {
-  const [title, setTitle] = useState('');
+const documentCategories = ["Policy", "Handbook", "Contract", "Form", "Training Material", "Other"];
+
+function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpdated }) {
+  const { employees } = useAppContext();
+  const [name, setName] = useState('');
   const [fileURL, setFileURL] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
-  const [allEmployees, setAllEmployees] = useState([]);
+  const [category, setCategory] = useState('Policy');
+  const [description, setDescription] = useState('');
   const [assignedEmails, setAssignedEmails] = useState([]);
   const [assignmentType, setAssignmentType] = useState('all');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      const fetchEmployees = async () => {
-        const snapshot = await getDocs(collection(db, 'employees'));
-        setAllEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      };
-      fetchEmployees();
-
-      if (document) {
-        setTitle(document.name || '');
-        setFileURL(document.fileURL || '');
-        setExpirationDate(document.expirationDate || '');
-        setAssignmentType(document.assignedTo?.type || 'all');
-        setAssignedEmails(document.assignedTo?.emails || []);
-      }
+    if (isOpen && docToEdit) {
+        setName(docToEdit.name || '');
+        setFileURL(docToEdit.fileURL || '');
+        setExpirationDate(docToEdit.expirationDate || '');
+        setCategory(docToEdit.category || 'Policy');
+        setDescription(docToEdit.description || '');
+        setAssignmentType(docToEdit.assignedTo?.type || 'all');
+        setAssignedEmails(docToEdit.assignedTo?.emails || []);
     }
-  }, [isOpen, document]);
+  }, [isOpen, docToEdit]);
 
   const handleEmployeeToggle = (email) => {
     setAssignedEmails(prev => 
@@ -39,26 +39,41 @@ function EditDocumentModal({ isOpen, onClose, document, onDocumentUpdated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || !fileURL) {
-      setError('Please provide a title and a document link.');
+    if (!name || !fileURL) {
+      setError('Please provide a name and a document link.');
       return;
     }
     setLoading(true);
     setError('');
 
     try {
-      let assignedToData = { type: assignmentType };
-      if (assignmentType === 'specific') {
-        assignedToData.emails = assignedEmails;
-      }
+        const docRef = doc(db, 'documents', docToEdit.id);
+        const currentAcks = docToEdit.acknowledgments || [];
+        
+        let finalAssignedEmails = [];
+        if (assignmentType === 'all') {
+            finalAssignedEmails = employees.map(e => e.email);
+        } else {
+            finalAssignedEmails = assignedEmails;
+        }
 
-      const docRef = doc(db, 'documents', document.id);
-      await updateDoc(docRef, {
-        name: title,
-        fileURL: fileURL,
-        expirationDate: expirationDate || null,
-        assignedTo: assignedToData,
-      });
+        const newAcks = finalAssignedEmails.map(email => {
+            const existingAck = currentAcks.find(ack => ack.userEmail === email);
+            return existingAck || { userEmail: email, status: 'Pending', timestamp: null, notes: '' };
+        });
+
+        await updateDoc(docRef, {
+            name,
+            fileURL,
+            category,
+            description,
+            assignedTo: {
+                type: assignmentType,
+                emails: assignmentType === 'specific' ? assignedEmails : []
+            },
+            expirationDate: expirationDate || null,
+            acknowledgments: newAcks
+        });
       
       onDocumentUpdated();
       onClose();
@@ -70,7 +85,7 @@ function EditDocumentModal({ isOpen, onClose, document, onDocumentUpdated }) {
     }
   };
 
-  if (!isOpen || !document) return null;
+  if (!isOpen || !docToEdit) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
@@ -81,8 +96,12 @@ function EditDocumentModal({ isOpen, onClose, document, onDocumentUpdated }) {
         </div>
         <form onSubmit={handleSubmit} className="overflow-y-auto p-6">
           <div className="space-y-4">
-            <div><label htmlFor="title" className="block text-sm font-medium text-gray-700">Document Title</label><input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
-            <div><label htmlFor="fileURL" className="block text-sm font-medium text-gray-700">Document Link</label><div className="relative mt-1"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Link className="h-5 w-5 text-gray-400" /></div><input type="url" id="fileURL" value={fileURL} onChange={(e) => setFileURL(e.target.value)} placeholder="https://docs.google.com/..." className="block w-full pl-10 border border-gray-300 rounded-md shadow-sm p-2" /></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label htmlFor="name" className="block text-sm font-medium text-gray-700">Document Name</label><input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
+                <div><label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label><select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option disabled>Select a category</option>{documentCategories.map(cat => <option key={cat}>{cat}</option>)}</select></div>
+            </div>
+            <div><label htmlFor="description" className="block text-sm font-medium text-gray-700">Description (Optional)</label><textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows="2" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea></div>
+            <div><label htmlFor="fileURL" className="block text-sm font-medium text-gray-700">Document Link</label><div className="relative mt-1"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Link className="h-5 w-5 text-gray-400" /></div><input type="url" id="fileURL" value={fileURL} onChange={(e) => setFileURL(e.target.value)} placeholder="https://..." className="block w-full pl-10 border border-gray-300 rounded-md shadow-sm p-2" /></div></div>
             <div><label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700">Expiration Date (Optional)</label><input type="date" id="expirationDate" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
             
             <div>
@@ -95,10 +114,10 @@ function EditDocumentModal({ isOpen, onClose, document, onDocumentUpdated }) {
 
             {assignmentType === 'specific' && (
               <div className="border rounded-lg p-2 max-h-48 overflow-y-auto">
-                {allEmployees.map(emp => (
+                {employees.map(emp => (
                   <div key={emp.id} className="flex items-center p-2 rounded-md hover:bg-gray-50">
-                    <input type="checkbox" checked={assignedEmails.includes(emp.email)} onChange={() => handleEmployeeToggle(emp.email)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                    <label className="ml-3 text-sm text-gray-700">{emp.name}</label>
+                    <input type="checkbox" id={`edit-emp-${emp.id}`} checked={assignedEmails.includes(emp.email)} onChange={() => handleEmployeeToggle(emp.email)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <label htmlFor={`edit-emp-${emp.id}`} className="ml-3 text-sm text-gray-700">{emp.name}</label>
                   </div>
                 ))}
               </div>
