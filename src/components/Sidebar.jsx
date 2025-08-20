@@ -1,27 +1,26 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, User, Users, DollarSign, Clock, Calendar, FileText, BookOpen, MessageSquare, BarChart2, Building, Settings, LogOut } from 'lucide-react';
+import { Home, User, Users, DollarSign, Clock, TrendingUp, Calendar, FileText, BookOpen, MessageSquare, BarChart2, Building, Settings, LogOut } from 'lucide-react';
 import { auth } from '../firebase';
 
 const navItems = [
-  { path: '/', label: 'Home', icon: <Home size={20} /> },
+  { path: '/dashboard', label: 'Home', icon: <Home size={20} /> },
   { path: '/profile', label: 'Profile', icon: <User size={20} /> },
   { path: '/people', label: 'People', icon: <Users size={20} /> },
   { path: '/payroll', label: 'Payroll', icon: <DollarSign size={20} /> },
-  { path: '/time-tracking', label: 'Time Tracking', icon: <Clock size={20} /> },
   { path: '/time-off', label: 'Time Off', icon: <Calendar size={20} /> },
   { path: '/documents', label: 'Documents', icon: <FileText size={20} /> },
   { path: '/training', label: 'Training', icon: <BookOpen size={20} /> },
   { path: '/surveys', label: 'Surveys', icon: <MessageSquare size={20} /> },
   { path: '/performance', label: 'Performance', icon: <BarChart2 size={20} /> },
-  { path: '/reporting', label: 'Reporting', icon: <BarChart2 size={20} /> },
+  { path: '/reporting', label: 'Reporting', icon: <TrendingUp size={20} /> },
   { path: '/company', label: 'Company', icon: <Building size={20} /> },
   { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
 ];
 
 const NavLink = ({ to, children, icon }) => {
   const location = useLocation();
-  const isActive = location.pathname === to;
+  const isActive = location.pathname.startsWith(to) && (to !== '/' || location.pathname === '/');
 
   return (
     <Link to={to} className={`flex items-center p-2.5 my-1 rounded-lg text-sm font-medium transition-all duration-200 ${ isActive ? 'bg-gradient-to-r from-blue-50 to-sky-100 text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }`}>

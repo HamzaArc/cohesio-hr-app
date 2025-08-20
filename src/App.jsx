@@ -15,7 +15,7 @@ import Payroll from './pages/Payroll';
 import RunPayroll from './pages/RunPayroll';
 import PayrollDetails from './pages/PayrollDetails';
 import TimeOff from './pages/TimeOff';
-import TimeTracking from './pages/TimeTracking';
+// TimeTracking import is removed
 import Performance from './pages/Performance';
 import TemplateEditor from './pages/TemplateEditor';
 import TakeReview from './pages/TakeReview';
@@ -91,7 +91,7 @@ function App() {
           <Route path="payroll/run/:runId" element={<RunPayroll />} />
           <Route path="payroll/records/:runId" element={<PayrollDetails />} />
           <Route path="time-off" element={<TimeOff />} />
-          <Route path="time-tracking" element={<TimeTracking />} />
+          {/* The /time-tracking route is now removed */}
           <Route path="performance" element={<Performance />} />
           <Route path="performance/templates/:templateId" element={<TemplateEditor />} />
           <Route path="performance/reviews/:reviewId" element={<TakeReview />} />
