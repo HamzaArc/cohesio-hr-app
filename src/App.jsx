@@ -26,8 +26,6 @@ import Training from './pages/Training';
 import Reporting from './pages/Reporting';
 import Company from './pages/Company';
 import Settings from './pages/Settings';
-
-// Import new static pages
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
 import Integrations from './pages/Integrations';
@@ -90,7 +88,7 @@ function App() {
           <Route path="people" element={<People />} />
           <Route path="people/:employeeId" element={<EmployeeProfile />} />
           <Route path="payroll" element={<Payroll />} />
-          <Route path="payroll/run/:payPeriodId" element={<RunPayroll />} />
+          <Route path="payroll/run/:runId" element={<RunPayroll />} />
           <Route path="payroll/records/:runId" element={<PayrollDetails />} />
           <Route path="time-off" element={<TimeOff />} />
           <Route path="time-tracking" element={<TimeTracking />} />
