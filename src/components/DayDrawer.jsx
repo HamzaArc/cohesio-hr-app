@@ -17,7 +17,7 @@ function DayDrawer({ isOpen, onClose, date, events, onViewRequest }) {
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
       <div onClick={onClose} className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
-      
+
       {/* Drawer Panel */}
       <div className="absolute inset-y-0 right-0 bg-white w-full max-w-md shadow-xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
@@ -27,11 +27,11 @@ function DayDrawer({ isOpen, onClose, date, events, onViewRequest }) {
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5"/></button>
         </div>
-        
+
         <div className="p-4 space-y-3 overflow-y-auto">
             {events.length > 0 ? events.map(event => (
-                <button 
-                    key={event.id} 
+                <button
+                    key={event.id}
                     onClick={() => onViewRequest(event)}
                     className="w-full text-left flex items-center p-3 rounded-lg hover:bg-gray-50 border transition-colors"
                 >

@@ -8,8 +8,33 @@ const getMonthName = (monthIndex) => {
 
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 
-function TeamCalendar({ events, weekends, holidays, totalEmployees, onDayClick }) {
+// Simple hash function to get a color index from an employee's email
+const getHash = (input) => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+const colorPalette = [
+  'bg-blue-400', 'bg-green-400', 'bg-purple-400', 'bg-red-400', 
+  'bg-yellow-400', 'bg-indigo-400', 'bg-pink-400', 'bg-teal-400'
+];
+
+function TeamCalendar({ events, employees, weekends, holidays, onDayClick }) {
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const employeeColorMap = useMemo(() => {
+    const map = new Map();
+    employees.forEach(emp => {
+      const hash = getHash(emp.email);
+      map.set(emp.email, colorPalette[hash % colorPalette.length]);
+    });
+    return map;
+  }, [employees]);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -17,7 +42,6 @@ function TeamCalendar({ events, weekends, holidays, totalEmployees, onDayClick }
   const goToPreviousMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
   const goToNextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
 
-  // --- NEW: Handlers for the date picker ---
   const handleMonthChange = (e) => {
     setCurrentDate(new Date(currentYear, parseInt(e.target.value), 1));
   };
@@ -57,7 +81,7 @@ function TeamCalendar({ events, weekends, holidays, totalEmployees, onDayClick }
         return date >= startDate && date <= endDate;
       });
       
-      const leaveDensity = totalEmployees > 0 ? dayEvents.length / totalEmployees : 0;
+      const leaveDensity = employees.length > 0 ? dayEvents.length / employees.length : 0;
       
       grid.push({ 
         key: `day-${day}`, day, date, events: dayEvents,
@@ -68,18 +92,10 @@ function TeamCalendar({ events, weekends, holidays, totalEmployees, onDayClick }
       });
     }
     return grid;
-  }, [currentYear, currentMonth, events, weekends, holidays, totalEmployees]);
+  }, [currentYear, currentMonth, events, weekends, holidays, employees]);
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const getEventTypeStyle = (type) => {
-    switch(type) {
-        case 'Vacation': return 'bg-gradient-to-r from-blue-400 to-blue-500 shadow-md shadow-blue-500/20';
-        case 'Sick Day': return 'bg-gradient-to-r from-green-400 to-green-500 shadow-md shadow-green-500/20';
-        case 'Personal (Unpaid)': return 'bg-gradient-to-r from-purple-400 to-purple-500 shadow-md shadow-purple-500/20';
-        default: return 'bg-gradient-to-r from-gray-400 to-gray-500 shadow-md shadow-gray-500/20';
-    }
-  };
-
+  
   const getHeatmapStyle = (density) => {
       if (density === 0) return '';
       if (density <= 0.25) return 'bg-yellow-100';
@@ -91,7 +107,6 @@ function TeamCalendar({ events, weekends, holidays, totalEmployees, onDayClick }
   return (
     <div className="bg-white p-6 rounded-b-lg shadow-sm border border-gray-200 border-t-0">
       <div className="flex justify-between items-center mb-4">
-        {/* --- NEW: Date Picker UI --- */}
         <div className="flex items-center gap-2">
             <select value={currentMonth} onChange={handleMonthChange} className="font-bold text-xl text-gray-800 border-gray-300 rounded-md shadow-sm p-1">
                 {Array.from({length: 12}, (_, i) => <option key={i} value={i}>{getMonthName(i)}</option>)}
@@ -122,7 +137,7 @@ function TeamCalendar({ events, weekends, holidays, totalEmployees, onDayClick }
                     </div>
                 )}
                 {cell.events?.map(event => (
-                    <div key={event.id} className={`p-1.5 text-white text-xs rounded-lg truncate ${getEventTypeStyle(event.leaveType)}`}>
+                    <div key={event.id} className={`p-1.5 text-white text-xs rounded-lg truncate ${employeeColorMap.get(event.userEmail) || 'bg-gray-400'}`}>
                         {event.employeeName}
                     </div>
                 ))}

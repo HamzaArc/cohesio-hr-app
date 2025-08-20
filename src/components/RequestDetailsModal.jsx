@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { X, CheckCircle, XCircle, Send, Calendar, RotateCcw, Trash2 } from 'lucide-react';
 
@@ -8,6 +8,7 @@ const HistoryItem = ({ icon, title, date, isLast }) => ( <div className="relativ
 
 function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedule }) {
   const [history, setHistory] = useState([]);
+  const currentUser = auth.currentUser;
 
   useEffect(() => {
     if (isOpen && request) {
@@ -39,7 +40,8 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
           default: return <Calendar size={16} className="text-gray-500" />;
       }
   }
-
+  
+  const isOwner = currentUser?.email === request.userEmail;
   const canWithdraw = request.status === 'Pending';
   const canReschedule = request.status === 'Approved' && new Date(request.startDate) > new Date();
 
@@ -76,8 +78,8 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
 
         <div className="mt-8 pt-6 border-t flex justify-between items-center">
           <div>
-              {canWithdraw && <button onClick={() => onWithdraw(request)} className="flex items-center text-sm text-red-600 bg-red-100 hover:bg-red-200 font-semibold py-2 px-3 rounded-lg"><Trash2 size={16} className="mr-2"/>Withdraw Request</button>}
-              {canReschedule && <button onClick={() => onReschedule(request)} className="flex items-center text-sm text-orange-600 bg-orange-100 hover:bg-orange-200 font-semibold py-2 px-3 rounded-lg"><RotateCcw size={16} className="mr-2"/>Reschedule</button>}
+              {isOwner && canWithdraw && <button onClick={() => onWithdraw(request)} className="flex items-center text-sm text-red-600 bg-red-100 hover:bg-red-200 font-semibold py-2 px-3 rounded-lg"><Trash2 size={16} className="mr-2"/>Withdraw Request</button>}
+              {isOwner && canReschedule && <button onClick={() => onReschedule(request)} className="flex items-center text-sm text-orange-600 bg-orange-100 hover:bg-orange-200 font-semibold py-2 px-3 rounded-lg"><RotateCcw size={16} className="mr-2"/>Reschedule</button>}
           </div>
           <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Close</button>
         </div>

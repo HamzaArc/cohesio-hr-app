@@ -27,7 +27,7 @@ function RescheduleModal({ isOpen, onClose, request, onRescheduled }) {
 
     try {
       const batch = writeBatch(db);
-      
+
       const requestRef = doc(db, 'timeOffRequests', request.id);
       batch.update(requestRef, {
         startDate,

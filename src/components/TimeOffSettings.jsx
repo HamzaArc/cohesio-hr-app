@@ -20,7 +20,7 @@ function TimeOffSettings() {
     resetPersonal: true,
     lastResetYear: null,
   });
-  
+
   // UI State
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
@@ -72,11 +72,11 @@ function TimeOffSettings() {
   const handleDeleteHoliday = async (holidayId) => {
     await deleteDoc(doc(db, 'companyPolicies', 'timeOff', 'holidays', holidayId));
   };
-  
+
   const handleFetchHolidays = async () => {
     setAiLoading(true);
     const prompt = `List all official public holidays for ${selectedCountry} for the year ${selectedYear}.`;
-    
+
     try {
         let chatHistory = [];
         chatHistory.push({ role: "user", parts: [{ text: prompt }] });
@@ -101,7 +101,7 @@ function TimeOffSettings() {
 
         const apiKey = "YOUR_GEMINI_API_KEY"; // Replace with your key
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -116,17 +116,17 @@ function TimeOffSettings() {
 
         const result = await response.json();
         const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
+
         if (text) {
             const fetchedHolidays = JSON.parse(text);
             const batch = writeBatch(db);
             const policyRef = doc(db, 'companyPolicies', 'timeOff');
-            
+
             fetchedHolidays.forEach(holiday => {
                 const newHolidayRef = doc(collection(policyRef, 'holidays'));
                 batch.set(newHolidayRef, { name: holiday.holidayName, date: holiday.holidayDate });
             });
-            
+
             await batch.commit();
         } else {
             throw new Error("Could not parse holidays from AI response.");
@@ -175,14 +175,14 @@ function TimeOffSettings() {
     try {
       const employeesSnapshot = await getDocs(collection(db, 'employees'));
       const batch = writeBatch(db);
-      
+
       employeesSnapshot.forEach(employeeDoc => {
         const employeeRef = doc(db, 'employees', employeeDoc.id);
         const updateData = {};
         if (resetPolicy.resetVacation) updateData.vacationBalance = Number(resetPolicy.vacationMax);
         if (resetPolicy.resetSick) updateData.sickBalance = Number(resetPolicy.sickMax);
         if (resetPolicy.resetPersonal) updateData.personalBalance = Number(resetPolicy.personalMax);
-        
+
         if (Object.keys(updateData).length > 0) {
             batch.update(employeeRef, updateData);
         }
