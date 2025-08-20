@@ -5,13 +5,12 @@ import Header from './Header';
 
 function Layout() {
   return (
-    // This outer container is now a column, putting the header on top.
-    <div className="flex flex-col h-screen bg-gray-50 font-sans">
+    // THIS LINE HAS BEEN CHANGED TO MAKE THE BACKGROUND RED
+    <div className="flex flex-col h-screen bg-red-500 font-sans">
       <Header />
-      {/* This container is a row for the content below the header. */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gray-50"> {/* I've kept the main content area gray */}
           <Outlet />
         </main>
       </div>

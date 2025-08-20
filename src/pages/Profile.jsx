@@ -1,31 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from '../firebase';
-import { Edit2 } from 'lucide-react';
+import { auth, db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+// --- THIS LINE IS THE FIX ---
+import { Edit2, DollarSign, Briefcase, User, Users, Home, Phone, Shield, Plane, Heart, Sun } from 'lucide-react';
 import EditEmployeeModal from '../components/EditEmployeeModal';
-import { useAppContext } from '../contexts/AppContext'; // Import our new hook
+import OnboardingPlan from '../components/OnboardingPlan';
+import SkillsAndCerts from '../components/SkillsAndCerts';
 
-const ProfileTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
+// Re-using the components from the other profile page
+const ProfileTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`} > {label} </button> );
 const InfoSection = ({ title, children, onEdit }) => ( <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-800">{title}</h3>{onEdit && <button onClick={onEdit} className="text-sm font-semibold text-blue-600 hover:underline">Edit</button>}</div><div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">{children}</div></div> );
-const InfoField = ({ label, value }) => ( <div><p className="text-xs text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value ?? 'N/A'}</p></div> );
+const InfoField = ({ icon, label, value }) => ( <div className="flex items-start"><div className="flex-shrink-0 w-6 text-gray-400 pt-0.5">{icon}</div><div><p className="text-xs text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value || 'N/A'}</p></div></div> );
+
 
 function Profile() {
-  // --- THE UPGRADE IS HERE ---
-  // We get the full employee list and loading state from our "App Brain".
-  const { employees, loading } = useAppContext();
-  
-  const [activeTab, setActiveTab] = useState('Personal');
+  const [activeTab, setActiveTab] = useState('Job');
   const [employee, setEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const currentUser = auth.currentUser;
 
-  // This effect now runs when the global employee list is ready.
-  // It finds the current user's profile from that list.
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (currentUser && employees.length > 0) {
-      const userProfile = employees.find(e => e.email === currentUser.email);
-      setEmployee(userProfile);
+    if (!currentUser) { 
+      setLoading(false); 
+      return; 
     }
-  }, [employees]); // It runs whenever the global list changes.
+
+    setLoading(true);
+    const employeesRef = collection(db, 'employees');
+    const q = query(employeesRef, where("email", "==", currentUser.email));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        setEmployee({ id: doc.id, ...doc.data() });
+      } else {
+        setEmployee(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   if (loading) return <div className="p-8">Loading Your Profile...</div>;
   if (!employee) return <div className="p-8">Could not find an employee profile linked to your account.</div>;
@@ -47,22 +63,69 @@ function Profile() {
                 <h2 className="text-xl font-bold text-gray-800">{employee.name}</h2>
                 <p className="text-gray-500 mb-4">{employee.position}</p>
                 <div className="text-sm text-gray-600 space-y-2 text-left border-t border-gray-100 pt-4">
-                    <p><span className="font-semibold">Status:</span> {employee.status}</p>
+                    <p><span className="font-semibold">Status:</span> <span className={`capitalize font-medium ${employee.status === 'active' ? 'text-green-700' : 'text-yellow-700'}`}>{employee.status}</span></p>
                     <p><span className="font-semibold">Email:</span> <a href={`mailto:${employee.email}`} className="text-blue-600 hover:underline">{employee.email || 'N/A'}</a></p>
                 </div>
             </div>
           </div>
 
           <div className="w-full lg:w-3/4">
-              <div className="border-b border-gray-200 bg-white rounded-t-lg shadow-sm flex items-center px-2">
-                  <ProfileTab label="Personal" active={activeTab === 'Personal'} onClick={() => setActiveTab('Personal')} />
-                  <ProfileTab label="Job & Pay" active={activeTab === 'Job & Pay'} onClick={() => setActiveTab('Job & Pay')} />
-                  <ProfileTab label="Time Off" active={activeTab === 'Time Off'} onClick={() => setActiveTab('Time Off')} />
+              <div className="border-b border-gray-200 bg-white rounded-t-lg shadow-sm">
+                <div className="flex items-center px-2 overflow-x-auto">
+                    <ProfileTab label="Job" active={activeTab === 'Job'} onClick={() => setActiveTab('Job')} />
+                    <ProfileTab label="Personal" active={activeTab === 'Personal'} onClick={() => setActiveTab('Personal')} />
+                    <ProfileTab label="Time Off" active={activeTab === 'Time Off'} onClick={() => setActiveTab('Time Off')} />
+                    <ProfileTab label="Onboarding" active={activeTab === 'Onboarding'} onClick={() => setActiveTab('Onboarding')} />
+                    <ProfileTab label="Skills" active={activeTab === 'Skills'} onClick={() => setActiveTab('Skills')} />
+                </div>
               </div>
-              <div className="mt-0">
-                  {activeTab === 'Personal' && ( <InfoSection title="Basic information" onEdit={() => setIsEditModalOpen(true)}><InfoField label="Full Name" value={employee.name} /><InfoField label="Email" value={employee.email} /><InfoField label="Phone (Work)" value={employee.phone} /><InfoField label="Gender" value={employee.gender} /></InfoSection> )}
-                  {activeTab === 'Job & Pay' && ( <InfoSection title="Employment information" onEdit={() => setIsEditModalOpen(true)}><InfoField label="Hire date" value={employee.hireDate} /><InfoField label="Department" value={employee.department} /><InfoField label="Position" value={employee.position} /><InfoField label="Employment Type" value={employee.employmentType} /><InfoField label="Compensation" value={employee.compensation} /></InfoSection> )}
-                  {activeTab === 'Time Off' && ( <InfoSection title="Time Off Balances" onEdit={() => setIsEditModalOpen(true)}><InfoField label="Vacation" value={`${employee.vacationBalance} days`} /><InfoField label="Sick Days" value={`${employee.sickBalance} days`} /><InfoField label="Personal Days" value={`${employee.personalBalance} days`} /></InfoSection> )}
+
+              <div className="mt-6">
+                  {activeTab === 'Job' && (
+                    <div className="space-y-6">
+                      <InfoSection title="Employment Details" onEdit={() => setIsEditModalOpen(true)}>
+                        <InfoField icon={<Briefcase size={16} />} label="Position" value={employee.position} />
+                        <InfoField icon={<Users size={16} />} label="Department" value={employee.department} />
+                        <InfoField icon={<Briefcase size={16} />} label="Employment Type" value={employee.employmentType} />
+                        <InfoField icon={<Users size={16} />} label="Reports To" value={employee.managerEmail} />
+                      </InfoSection>
+                      <InfoSection title="Compensation" onEdit={() => setIsEditModalOpen(true)}>
+                        <InfoField icon={<DollarSign size={16} />} label="Pay Rate" value={employee.compensation} />
+                      </InfoSection>
+                    </div>
+                  )}
+                  {activeTab === 'Personal' && (
+                    <div className="space-y-6">
+                      <InfoSection title="Contact Information" onEdit={() => setIsEditModalOpen(true)}>
+                        <InfoField icon={<Phone size={16} />} label="Phone (Work)" value={employee.phone} />
+                        <InfoField icon={<Home size={16} />} label="Address" value={employee.address} />
+                      </InfoSection>
+                      <InfoSection title="Emergency Contact" onEdit={() => setIsEditModalOpen(true)}>
+                        <InfoField icon={<User size={16} />} label="Contact Name" value={employee.emergencyContactName} />
+                        <InfoField icon={<Shield size={16} />} label="Relationship" value={employee.emergencyContactRelationship} />
+                        <InfoField icon={<Phone size={16} />} label="Contact Phone" value={employee.emergencyContactPhone} />
+                      </InfoSection>
+                    </div>
+                  )}
+                  {activeTab === 'Time Off' && (
+                    <div className="space-y-6">
+                      <InfoSection title="Time Off Balances" onEdit={() => setIsEditModalOpen(true)}>
+                        <InfoField icon={<Plane size={16} />} label="Vacation" value={`${employee.vacationBalance} days`} />
+                        <InfoField icon={<Heart size={16} />} label="Sick Days" value={`${employee.sickBalance} days`} />
+                        <InfoField icon={<Sun size={16} />} label="Personal Days" value={`${employee.personalBalance} days`} />
+                      </InfoSection>
+                    </div>
+                  )}
+                  {activeTab === 'Onboarding' && (
+                    <div>
+                      <OnboardingPlan employeeId={employee.id} />
+                    </div>
+                  )}
+                  {activeTab === 'Skills' && (
+                    <div>
+                      <SkillsAndCerts employeeId={employee.id} />
+                    </div>
+                  )}
               </div>
           </div>
         </div>
