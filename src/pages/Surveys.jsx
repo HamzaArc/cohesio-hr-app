@@ -1,43 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash } from 'lucide-react';
-import { db } from '../firebase';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash, CheckCircle, Clock, BarChart2, Users } from 'lucide-react';
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
-import AddSurveyModal from '../components/AddSurveyModal';
-import EditSurveyModal from '../components/EditSurveyModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import StatCard from '../components/StatCard';
+import { useAppContext } from '../contexts/AppContext';
+
+const SurveyTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 
 function Surveys() {
+  const { employees } = useAppContext();
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSurvey, setSelectedSurvey] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState('Admin View');
+  const navigate = useNavigate();
+  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    setLoading(true);
-    const surveysCollection = collection(db, 'surveys');
-    const q = query(surveysCollection, orderBy('created', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const surveysList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        created: doc.data().created?.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) || 'N/A',
-      }));
-      setSurveys(surveysList);
+    const q = query(collection(db, 'surveys'), orderBy('created', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setSurveys(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const handleEditClick = (survey) => {
-    setSelectedSurvey(survey);
-    setIsEditModalOpen(true);
-  };
+  const { mySurveys, stats } = useMemo(() => {
+    if (!currentUser) return { mySurveys: [], stats: {} };
+    
+    const active = surveys.filter(s => s.status === 'Active').length;
+    const closed = surveys.filter(s => s.status === 'Closed').length;
+    const totalParticipants = surveys.reduce((acc, s) => acc + (s.participants?.length || 0), 0);
+    const totalResponses = surveys.reduce((acc, s) => acc + (s.responses?.length || 0), 0);
+    const completionRate = totalParticipants > 0 ? (totalResponses / totalParticipants) * 100 : 0;
+    
+    const my = surveys.filter(s => {
+        const hasResponded = s.responses?.some(r => r.userEmail === currentUser.email);
+        return s.status === 'Active' && s.participants?.includes(currentUser.email) && !hasResponded;
+    });
 
-  const handleDeleteClick = (survey) => {
+    return { 
+      mySurveys: my,
+      stats: { active, closed, completionRate: completionRate.toFixed(0) }
+    };
+  }, [surveys, currentUser]);
+
+  const handleDeleteClick = (e, survey) => {
+    e.stopPropagation();
     setSelectedSurvey(survey);
     setIsDeleteModalOpen(true);
   };
@@ -45,67 +58,89 @@ function Surveys() {
   const handleDeleteConfirm = async () => {
     if (!selectedSurvey) return;
     setIsDeleting(true);
-    try {
-      await deleteDoc(doc(db, 'surveys', selectedSurvey.id));
-      setIsDeleteModalOpen(false);
-      setSelectedSurvey(null);
-    } catch (error) {
-      console.error("Error deleting survey: ", error);
-    } finally {
-      setIsDeleting(false);
+    await deleteDoc(doc(db, 'surveys', selectedSurvey.id));
+    setIsDeleteModalOpen(false);
+    setSelectedSurvey(null);
+    setIsDeleting(false);
+  };
+
+  const handleAdminCardClick = (survey) => {
+    if (survey.status === 'Draft') {
+      navigate(`/surveys/edit/${survey.id}`);
+    } else {
+      navigate(`/surveys/results/${survey.id}`);
     }
   };
+  
+  const handleUserCardClick = (survey) => {
+      navigate(`/surveys/take/${survey.id}`);
+  };
+  
+  const SurveyCard = ({ survey, isAdmin }) => {
+    const participantCount = survey.participants?.length || 0;
+    const responseCount = survey.responses?.length || 0;
+    const completion = participantCount > 0 ? (responseCount / participantCount) * 100 : 0;
+
+    return (
+      <div onClick={() => isAdmin ? handleAdminCardClick(survey) : handleUserCardClick(survey)} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col hover:shadow-md hover:border-blue-500 cursor-pointer transition-all">
+        <div className="flex-grow">
+          <div className="flex justify-between items-start">
+            <span className={`text-xs font-bold py-1 px-2 rounded-full ${survey.status === 'Active' ? 'bg-green-100 text-green-700' : survey.status === 'Draft' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{survey.status}</span>
+            <div className="flex items-center gap-1">
+                {isAdmin && survey.status === 'Draft' && <div className="p-2 text-gray-400" title="Edit Survey"><Edit size={16} /></div>}
+                {isAdmin && survey.status !== 'Draft' && <div className="p-2 text-gray-400" title="View Results"><BarChart2 size={16} /></div>}
+                {isAdmin && <button onClick={(e) => handleDeleteClick(e, survey)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-red-600"><Trash size={16} /></button>}
+            </div>
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 mt-2">{survey.title}</h3>
+          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{survey.description}</p>
+        </div>
+        <div className="mt-6">
+          <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>{responseCount} / {participantCount} Responses</span>
+            <span>{Math.round(completion)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full" style={{ width: `${completion}%`}}></div></div>
+        </div>
+      </div>
+    )
+  };
+
+  if (loading) { return <div className="p-8 text-center">Loading surveys...</div>; }
 
   return (
     <>
-      <AddSurveyModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSurveyAdded={() => setIsAddModalOpen(false)} />
-      <EditSurveyModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} survey={selectedSurvey} onSurveyUpdated={() => setIsEditModalOpen(false)} />
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={selectedSurvey?.title} loading={isDeleting} />
-
       <div className="p-8">
         <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Surveys</h1>
-          <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
-            <Plus size={20} className="mr-2" />
-            Create Survey
+          <h1 className="text-3xl font-bold text-gray-800">Employee Surveys</h1>
+          <button onClick={() => navigate('/surveys/create')} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
+            <Plus size={20} className="mr-2" /> Create Survey
           </button>
         </header>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="p-4 font-semibold text-gray-500 text-sm">Title</th>
-                <th className="p-4 font-semibold text-gray-500 text-sm">Date Created</th>
-                <th className="p-4 font-semibold text-gray-500 text-sm">Status</th>
-                <th className="p-4 font-semibold text-gray-500 text-sm">Responses</th>
-                <th className="p-4 font-semibold text-gray-500 text-sm">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (<tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>) 
-              : surveys.length === 0 ? (<tr><td colSpan="5" className="p-4 text-center text-gray-500">No surveys have been created.</td></tr>)
-              : surveys.map(survey => (
-                <tr key={survey.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
-                  <td className="p-4 font-semibold text-gray-800">{survey.title}</td>
-                  <td className="p-4 text-gray-700">{survey.created}</td>
-                  <td className="p-4">
-                      <span className={`text-xs font-bold py-1 px-2 rounded-full ${survey.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {survey.status}
-                      </span>
-                  </td>
-                  <td className="p-4 text-gray-700">{survey.responses}</td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEditClick(survey)} className="p-2 hover:bg-gray-200 rounded-full"><Edit size={16} className="text-gray-600" /></button>
-                      <button onClick={() => handleDeleteClick(survey)} className="p-2 hover:bg-gray-200 rounded-full"><Trash size={16} className="text-red-600" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard icon={<Clock size={24}/>} title="Active Surveys" value={stats.active} />
+            <StatCard icon={<CheckCircle size={24}/>} title="Closed Surveys" value={stats.closed} />
+            <StatCard icon={<BarChart2 size={24}/>} title="Avg. Completion" value={`${stats.completionRate}%`} />
+            <StatCard icon={<Users size={24}/>} title="Total Employees" value={employees.length} />
         </div>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="border-b border-gray-200 px-2 flex">
+                <SurveyTab label="My Surveys" active={activeTab === 'My Surveys'} onClick={() => setActiveTab('My Surveys')} />
+                <SurveyTab label="Admin View" active={activeTab === 'Admin View'} onClick={() => setActiveTab('Admin View')} />
+            </div>
+            <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activeTab === 'Admin View' && surveys.map(s => <SurveyCard key={s.id} survey={s} isAdmin={true} />)}
+                    {activeTab === 'My Surveys' && mySurveys.map(s => <SurveyCard key={s.id} survey={s} isAdmin={false} />)}
+                </div>
+                 {activeTab === 'My Surveys' && mySurveys.length === 0 && <p className="text-center text-gray-500 py-12">You have no active surveys assigned to you.</p>}
+                 {activeTab === 'Admin View' && surveys.length === 0 && <p className="text-center text-gray-500 py-12">No surveys have been created yet.</p>}
+            </div>
+        </div>
+
       </div>
     </>
   );

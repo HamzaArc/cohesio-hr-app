@@ -40,20 +40,6 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
     setError('');
 
     try {
-      let finalAssignedEmails = [];
-      if (assignmentType === 'all') {
-        finalAssignedEmails = employees.map(e => e.email);
-      } else {
-        finalAssignedEmails = assignedEmails;
-      }
-
-      const participants = finalAssignedEmails.map(email => ({
-        userEmail: email,
-        status: 'Assigned',
-        completionDate: null,
-        stepsStatus: steps.map(step => ({ stepId: step.id.toString(), status: 'Pending', notes: '', completedAt: null }))
-      }));
-
       const batch = writeBatch(db);
       const programRef = doc(collection(db, 'training'));
       
@@ -63,7 +49,6 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
         category,
         assignmentType,
         assignedEmails: assignmentType === 'specific' ? assignedEmails : [],
-        participants,
         dueDate: dueDate || null,
         created: serverTimestamp(),
       });
@@ -71,6 +56,23 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
       steps.forEach((step, index) => {
         const stepRef = doc(collection(db, 'training', programRef.id, 'steps'));
         batch.set(stepRef, { text: step.text, order: index });
+      });
+      
+      let finalAssignedEmails = [];
+      if (assignmentType === 'all') {
+        finalAssignedEmails = employees.map(e => e.email);
+      } else {
+        finalAssignedEmails = assignedEmails;
+      }
+
+      finalAssignedEmails.forEach(email => {
+          const participantRef = doc(collection(db, 'training', programRef.id, 'participants'));
+          batch.set(participantRef, {
+            userEmail: email,
+            status: 'Assigned',
+            completionDate: null,
+            stepsStatus: steps.map(step => ({ stepId: step.id.toString(), status: 'Pending', notes: '', completedAt: null }))
+          });
       });
       
       await batch.commit();

@@ -15,12 +15,14 @@ import Payroll from './pages/Payroll';
 import RunPayroll from './pages/RunPayroll';
 import PayrollDetails from './pages/PayrollDetails';
 import TimeOff from './pages/TimeOff';
-// TimeTracking import is removed
 import Performance from './pages/Performance';
 import TemplateEditor from './pages/TemplateEditor';
 import TakeReview from './pages/TakeReview';
 import ReviewSummary from './pages/ReviewSummary';
 import Surveys from './pages/Surveys';
+import SurveyStudio from './pages/SurveyStudio';
+import TakeSurvey from './pages/TakeSurvey'; // Import new page
+import SurveyResults from './pages/SurveyResults'; // Import new page
 import Documents from './pages/Documents';
 import Training from './pages/Training';
 import Reporting from './pages/Reporting';
@@ -34,7 +36,6 @@ import Careers from './pages/Careers';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
-
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -50,23 +51,50 @@ function App() {
 
   const ProtectedRoute = ({ children }) => {
     const location = useLocation();
-    if (!currentUser) {
-      return <Navigate to="/landing" state={{ from: location }} replace />;
-    }
+    if (!currentUser) { return <Navigate to="/landing" state={{ from: location }} replace />; }
     return children;
   };
 
   const PublicRoute = ({ children }) => {
     return currentUser ? <Navigate to="/dashboard" /> : children;
   };
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading Application...</div>;
+  
+  const SurveyStudioWrapper = () => {
+    const location = useLocation();
+    return <SurveyStudio key={location.pathname} />;
   }
+
+  if (loading) { return <div className="flex items-center justify-center h-screen">Loading Application...</div>; }
 
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="/dashboard" />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="people" element={<People />} />
+          <Route path="people/:employeeId" element={<EmployeeProfile />} />
+          <Route path="payroll" element={<Payroll />} />
+          <Route path="payroll/run/:runId" element={<RunPayroll />} />
+          <Route path="payroll/records/:runId" element={<PayrollDetails />} />
+          <Route path="time-off" element={<TimeOff />} />
+          <Route path="performance" element={<Performance />} />
+          <Route path="performance/templates/:templateId" element={<TemplateEditor />} />
+          <Route path="performance/reviews/:reviewId" element={<TakeReview />} />
+          <Route path="performance/reviews/:reviewId/summary" element={<ReviewSummary />} />
+          <Route path="surveys" element={<Surveys />} />
+          <Route path="surveys/create" element={<SurveyStudioWrapper />} />
+          <Route path="surveys/edit/:surveyId" element={<SurveyStudioWrapper />} /> 
+          <Route path="surveys/take/:surveyId" element={<TakeSurvey />} />
+          <Route path="surveys/results/:surveyId" element={<SurveyResults />} /> 
+          <Route path="documents" element={<Documents />} />
+          <Route path="training" element={<Training />} />
+          <Route path="reporting" element={<Reporting />} />
+          <Route path="company" element={<Company />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+        
         {/* Public Routes */}
         <Route path="/landing" element={<PublicRoute><LandingPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -80,31 +108,6 @@ function App() {
         <Route path="/privacy" element={<PublicRoute><Privacy /></PublicRoute>} />
         <Route path="/terms" element={<PublicRoute><Terms /></PublicRoute>} />
 
-        {/* Protected App Layout */}
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/dashboard" />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="people" element={<People />} />
-          <Route path="people/:employeeId" element={<EmployeeProfile />} />
-          <Route path="payroll" element={<Payroll />} />
-          <Route path="payroll/run/:runId" element={<RunPayroll />} />
-          <Route path="payroll/records/:runId" element={<PayrollDetails />} />
-          <Route path="time-off" element={<TimeOff />} />
-          {/* The /time-tracking route is now removed */}
-          <Route path="performance" element={<Performance />} />
-          <Route path="performance/templates/:templateId" element={<TemplateEditor />} />
-          <Route path="performance/reviews/:reviewId" element={<TakeReview />} />
-          <Route path="performance/reviews/:reviewId/summary" element={<ReviewSummary />} />
-          <Route path="surveys" element={<Surveys />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="training" element={<Training />} />
-          <Route path="reporting" element={<Reporting />} />
-          <Route path="company" element={<Company />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-
-        {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/landing" />} />
       </Routes>
     </BrowserRouter>

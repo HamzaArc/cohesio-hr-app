@@ -1,90 +1,96 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, Check } from 'lucide-react';
+import { X, CheckCircle, Clock, Check, Edit2 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 
 function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
   const [steps, setSteps] = useState([]);
   const [notes, setNotes] = useState('');
+  const [editingNote, setEditingNote] = useState('');
   const [currentStepId, setCurrentStepId] = useState(null);
+  const [editingStepId, setEditingStepId] = useState(null);
+  const [myParticipant, setMyParticipant] = useState(null);
   const currentUser = auth.currentUser;
 
   useEffect(() => {
+    if (!program || !currentUser) return;
+
+    // Listen for changes to the user's specific participant document for real-time updates
+    const myParticipantRecord = program.participants.find(p => p.userEmail === currentUser.email);
+    if (myParticipantRecord) {
+        const participantRef = doc(db, 'training', program.id, 'participants', myParticipantRecord.id);
+        const unsubscribe = onSnapshot(participantRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setMyParticipant({ id: docSnap.id, ...docSnap.data() });
+            }
+        });
+        return () => unsubscribe();
+    }
+  }, [program, currentUser]);
+  
+  useEffect(() => {
     if (program) {
-      console.log("--- MODAL OPENED ---");
-      console.log("Program Prop:", program);
       const stepsQuery = query(collection(db, 'training', program.id, 'steps'), orderBy('order'));
-      const unsubscribe = onSnapshot(stepsQuery, (snapshot) => {
-        const fetchedSteps = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log("Fetched Steps:", fetchedSteps);
-        setSteps(fetchedSteps);
+      const unsubscribeSteps = onSnapshot(stepsQuery, (snapshot) => {
+        setSteps(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
-      return () => unsubscribe();
+      return () => unsubscribeSteps();
     }
   }, [program]);
 
-  const { myParticipant, allParticipantsStatus } = useMemo(() => {
-    if (!program || !employees || !currentUser) return { myParticipant: null, allParticipantsStatus: [] };
-    
+  const allParticipantsStatus = useMemo(() => {
+    if (!program || !employees) return [];
     const employeeMap = new Map(employees.map(e => [e.email, e.name]));
-    const participant = program.participants.find(p => p.userEmail === currentUser.email);
-
-    console.log("--- PARTICIPANT DATA ---");
-    console.log("My Participant Object:", participant);
-
-    const allStatus = (program.participants || []).map(p => ({
+    return (program.participants || []).map(p => ({
+        ...p,
         name: employeeMap.get(p.userEmail) || p.userEmail,
-        status: p.status,
         completionDate: p.completionDate?.toDate().toLocaleDateString() || null,
     }));
-
-    return { myParticipant: participant, allParticipantsStatus: allStatus };
-  }, [program, employees, currentUser]);
+  }, [program, employees]);
 
   const handleCompleteStep = async () => {
-    console.log("--- 'Confirm Completion' CLICKED ---");
-    if (!currentStepId) {
-        console.error("No currentStepId set. Aborting.");
-        return;
-    }
-    console.log("Current Step ID to complete:", currentStepId);
-    console.log("Notes entered:", notes);
+    if (!currentStepId || !myParticipant) return;
 
-    const updatedParticipants = program.participants.map(p => {
-        if (p.userEmail === currentUser.email) {
-            console.log("Found my participant object to update:", p);
-            const updatedSteps = p.stepsStatus.map(s => {
-                if (s.stepId === currentStepId) {
-                    console.log("Found matching step to update:", s);
-                    return { ...s, status: 'Completed', notes, completedAt: new Date() };
-                }
-                return s;
-            });
-            
-            const allStepsCompleted = updatedSteps.every(s => s.status === 'Completed');
-            console.log("All steps completed?", allStepsCompleted);
+    const participantRef = doc(db, 'training', program.id, 'participants', myParticipant.id);
+    const currentStepsStatus = Array.isArray(myParticipant.stepsStatus) ? myParticipant.stepsStatus : [];
 
-            const finalParticipantObject = {
-                ...p,
-                stepsStatus: updatedSteps,
-                status: allStepsCompleted ? 'Completed' : 'In Progress',
-                completionDate: allStepsCompleted ? new Date() : null
-            };
-            console.log("Final participant object to be saved:", finalParticipantObject);
-            return finalParticipantObject;
+    let stepFound = false;
+    const updatedSteps = currentStepsStatus.map(s => {
+        if (s.stepId === currentStepId) {
+            stepFound = true;
+            return { ...s, status: 'Completed', notes, completedAt: new Date() };
         }
-        return p;
+        return s;
     });
-
-    try {
-        console.log("Attempting to save the following 'participants' array to Firestore:", updatedParticipants);
-        await updateDoc(doc(db, 'training', program.id), { participants: updatedParticipants });
-        console.log("--- SUCCESS: Firestore update complete! ---");
-        setCurrentStepId(null);
-        setNotes('');
-    } catch (error) {
-        console.error("--- ERROR: Firestore update failed! ---", error);
+    
+    if (!stepFound) {
+        updatedSteps.push({ stepId: currentStepId, status: 'Completed', notes, completedAt: new Date() });
     }
+
+    const allTemplateStepsCompleted = steps.length > 0 && steps.every(templateStep => 
+        updatedSteps.find(s => s.stepId === templateStep.id)?.status === 'Completed'
+    );
+
+    const finalStatus = allTemplateStepsCompleted ? 'Completed' : 'In Progress';
+
+    await updateDoc(participantRef, {
+        stepsStatus: updatedSteps,
+        status: finalStatus,
+        completionDate: allTemplateStepsCompleted ? new Date() : null
+    });
+    
+    setCurrentStepId(null);
+    setNotes('');
+  };
+
+  const handleUpdateNote = async (stepId) => {
+    const participantRef = doc(db, 'training', program.id, 'participants', myParticipant.id);
+    const updatedSteps = myParticipant.stepsStatus.map(s => 
+        s.stepId === stepId ? { ...s, notes: editingNote } : s
+    );
+    await updateDoc(participantRef, { stepsStatus: updatedSteps });
+    setEditingStepId(null);
+    setEditingNote('');
   };
 
   if (!isOpen || !program) return null;
@@ -106,18 +112,36 @@ function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
                             const stepStatusData = myParticipant.stepsStatus.find(s => s.stepId === step.id);
                             const isCompleted = stepStatusData?.status === 'Completed';
                             return (
-                                <div key={step.id} className={`p-4 rounded-lg border ${isCompleted ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                                <div key={step.id} className={`p-4 rounded-lg border transition-all ${isCompleted ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
                                     <div className="flex items-start justify-between">
-                                        <p className="font-semibold text-gray-800">{index + 1}. {step.text}</p>
-                                        {!isCompleted && <button onClick={() => setCurrentStepId(step.id)} className="bg-blue-600 text-white font-semibold py-1 px-3 rounded-full text-xs hover:bg-blue-700">Complete Step</button>}
-                                        {isCompleted && <CheckCircle size={20} className="text-green-500" />}
+                                        <p className="font-semibold text-gray-800 flex-1 pr-4">{index + 1}. {step.text}</p>
+                                        {!isCompleted && <button onClick={() => setCurrentStepId(step.id)} className="bg-blue-600 text-white font-semibold py-1 px-3 rounded-full text-xs hover:bg-blue-700 flex-shrink-0">Complete Step</button>}
+                                        {isCompleted && <CheckCircle size={20} className="text-green-500 flex-shrink-0" />}
                                     </div>
-                                    {isCompleted && stepStatusData.notes && (
-                                        <div className="mt-2 p-2 bg-green-100 border-l-2 border-green-300 text-xs text-green-800">
-                                            <p className="font-semibold">My notes:</p>
-                                            <p>{stepStatusData.notes}</p>
+                                    
+                                    {isCompleted && (
+                                        <div className="mt-4 pt-4 border-t border-green-200">
+                                            {editingStepId === step.id ? (
+                                                <div>
+                                                    <label className="text-xs font-medium text-gray-600">Edit your notes</label>
+                                                    <textarea value={editingNote} onChange={(e) => setEditingNote(e.target.value)} rows="2" className="w-full border rounded-md p-2 mt-1 text-sm"></textarea>
+                                                    <div className="flex justify-end gap-2 mt-2">
+                                                        <button onClick={() => setEditingStepId(null)} className="text-xs font-semibold text-gray-700">Cancel</button>
+                                                        <button onClick={() => handleUpdateNote(step.id)} className="bg-blue-600 text-white font-semibold py-1 px-3 rounded-full text-xs">Save Note</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-gray-600">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="font-semibold">Completed on {stepStatusData.completedAt?.toDate().toLocaleDateString()}</p>
+                                                        <button onClick={() => { setEditingStepId(step.id); setEditingNote(stepStatusData.notes);}} className="flex items-center gap-1 font-semibold text-blue-600 hover:underline"><Edit2 size={12}/> Edit Note</button>
+                                                    </div>
+                                                    {stepStatusData.notes && <p className="mt-2 pt-2 border-t border-dashed border-green-200">{stepStatusData.notes}</p>}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
+
                                     {currentStepId === step.id && (
                                         <div className="mt-4 pt-4 border-t">
                                             <label className="text-xs font-medium text-gray-600">Add completion notes (optional)</label>
