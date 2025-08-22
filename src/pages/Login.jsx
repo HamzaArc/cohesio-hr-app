@@ -4,7 +4,9 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, AtSign, CheckCircle, Shield, BarChart2, Cpu } from 'lucide-react';
 
-// ... (FeatureHighlight component remains the same)
+// Import the new click arrow icon
+import clickArrowIcon from '../assets/images/click-arrow.png';
+
 const FeatureHighlight = ({ icon, title, children }) => (
   <div className="flex items-start">
     <div className="flex-shrink-0">
@@ -18,7 +20,6 @@ const FeatureHighlight = ({ icon, title, children }) => (
     </div>
   </div>
 );
-
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -44,10 +45,24 @@ function Login() {
 
   return (
     <div className="min-h-screen bg-white flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-[#4A1D4A] p-12 flex-col justify-between">
-        <Link to="/landing" className="text-white text-2xl font-bold">
-          Cohesio
-        </Link>
+      <div className="hidden lg:flex lg:w-1/2 bg-primary p-12 flex-col justify-between relative">
+        <div className="relative">
+          <Link to="/landing" className="text-white text-2xl font-bold">
+            Cohesio
+          </Link>
+          <div className="absolute top-14 left-32">
+            <p className="text-sm italic text-white/60 w-40">
+              Click the logo to return to the main page
+            </p>
+            {/* Replaced SVG with the new image icon */}
+            <img 
+              src={clickArrowIcon} 
+              alt="Arrow pointing to logo" 
+              className="absolute -top-5 -left-8 w-10 h-10 transform -rotate-12 opacity-60 pointer-events-none"
+            />
+          </div>
+        </div>
+
         <div className="space-y-8">
             <FeatureHighlight icon={<Cpu size={24} />} title="Adaptable Performance">
                 Our product effectively adjusts to your needs, boosting efficiency and simplifying your tasks.
@@ -72,37 +87,36 @@ function Login() {
             <h2 className="text-3xl font-bold text-gray-900">Sign In</h2>
             <p className="mt-2 text-sm text-gray-600">
               New to Cohesio?{' '}
-              <Link to="/signup" className="font-medium text-blue-600 hover:underline">
+              <Link to="/signup" className="font-medium text-highlight hover:underline">
                 Create an account
               </Link>
             </p>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* ... form inputs remain the same ... */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <AtSign className="h-5 w-5 text-gray-400" />
                 </div>
-                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-highlight" />
               </div>
             </div>
             <div>
               <div className="flex justify-between">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-                <a href="#" className="text-sm text-blue-600 hover:underline">Forgot password?</a>
+                <a href="#" className="text-sm text-highlight hover:underline">Forgot password?</a>
               </div>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
-                <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-highlight" />
               </div>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             <div>
-              <button type="submit" disabled={loading} className="w-full py-2 px-4 bg-[#4A1D4A] text-white font-bold rounded-md hover:bg-[#6E2A6E] transition-colors disabled:bg-gray-400">
+              <button type="submit" disabled={loading} className="w-full py-2 px-4 bg-primary text-white font-bold rounded-md hover:bg-secondary transition-colors disabled:bg-gray-400">
                 {loading ? 'Signing In...' : 'Sign In'}
               </button>
             </div>
