@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBiaweIt3Xm2chJt1gbLwDlwt6tJ0N9v9M",
-  authDomain: "cohesio-app.firebaseapp.com",
-  projectId: "cohesio-app",
-  storageBucket: "cohesio-app.firebasestorage.app",
-  messagingSenderId: "981835745635",
-  appId: "1:981835745635:web:8871657f3314d5de8d6b56"
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID,
 };
 
 // Initialize Firebase
