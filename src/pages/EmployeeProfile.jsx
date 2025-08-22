@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-// --- THIS LINE IS THE FIX ---
 import { Edit2, Trash2, Plus, DollarSign, ArrowUp, Briefcase, User, Users, Home, Phone, Shield, Plane, Heart, Sun } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, onSnapshot, deleteDoc, collection, query, orderBy } from 'firebase/firestore';
+import { useAppContext } from '../contexts/AppContext';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import AddJourneyEventModal from '../components/AddJourneyEventModal';
@@ -28,6 +28,7 @@ const InfoSection = ({ title, children, onEdit }) => ( <div className="bg-white 
 const InfoField = ({ icon, label, value }) => ( <div className="flex items-start"><div className="flex-shrink-0 w-6 text-gray-400 pt-0.5">{icon}</div><div><p className="text-xs text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value || 'N/A'}</p></div></div> );
 
 function EmployeeProfile() {
+  const { companyId } = useAppContext();
   const [activeTab, setActiveTab] = useState('Job');
   const [employee, setEmployee] = useState(null);
   const [journey, setJourney] = useState([]);
@@ -40,16 +41,17 @@ function EmployeeProfile() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!employeeId) return;
+    if (!employeeId || !companyId) return;
+
     setLoading(true);
-    const docRef = doc(db, 'employees', employeeId);
+    const docRef = doc(db, 'companies', companyId, 'employees', employeeId);
     const unsubscribeEmployee = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) setEmployee({ id: docSnap.id, ...docSnap.data() });
       else setEmployee(null);
       setLoading(false);
     });
 
-    const journeyColRef = collection(db, 'employees', employeeId, 'journey');
+    const journeyColRef = collection(db, 'companies', companyId, 'employees', employeeId, 'journey');
     const q = query(journeyColRef, orderBy('date', 'desc'));
     const unsubscribeJourney = onSnapshot(q, (snapshot) => {
       setJourney(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -59,12 +61,13 @@ function EmployeeProfile() {
       unsubscribeEmployee();
       unsubscribeJourney();
     };
-  }, [employeeId]);
+  }, [employeeId, companyId]);
 
   const handleDelete = async () => {
+    if (!companyId) return;
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'employees', employeeId));
+      await deleteDoc(doc(db, 'companies', companyId, 'employees', employeeId));
       navigate('/people');
     } catch (err) {
       console.error('Error deleting employee:', err);

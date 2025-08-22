@@ -12,7 +12,7 @@ import StatCard from '../components/StatCard';
 
 // Main Component
 function Documents() {
-  const { employees } = useAppContext();
+  const { employees, companyId, currentUser } = useAppContext();
   const [allDocuments, setAllDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -22,14 +22,13 @@ function Documents() {
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || !companyId) {
       setLoading(false);
       return;
     }
-    const documentsCollection = collection(db, 'documents');
+    const documentsCollection = collection(db, 'companies', companyId, 'documents');
     const q = query(documentsCollection, orderBy('created', 'desc'));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -37,7 +36,6 @@ function Documents() {
         const data = doc.data();
         const isExpired = data.expirationDate && new Date(data.expirationDate) < new Date();
         
-        // Ensure acknowledgments is an array
         const acknowledgments = Array.isArray(data.acknowledgments) ? data.acknowledgments : [];
 
         const assignedToCurrentUser = data.assignedTo?.type === 'all' || 
@@ -45,7 +43,7 @@ function Documents() {
         return {
           id: doc.id,
           ...data,
-          acknowledgments, // Use the sanitized array
+          acknowledgments,
           isExpired,
           assignedToCurrentUser,
         };
@@ -54,7 +52,7 @@ function Documents() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, companyId]);
 
   const { myPendingDocuments, companyDocuments, stats } = useMemo(() => {
     const myPending = [];
@@ -92,15 +90,13 @@ function Documents() {
   }, [allDocuments, currentUser]);
 
   const updateAcknowledgementStatus = async (docId, status, notes = '') => {
-    if (!currentUser) return;
-    const docRef = doc(db, 'documents', docId);
+    if (!currentUser || !companyId) return;
+    const docRef = doc(db, 'companies', companyId, 'documents', docId);
     const docToUpdate = allDocuments.find(d => d.id === docId);
     if (!docToUpdate) return;
 
     const newAcknowledgments = docToUpdate.acknowledgments.map(ack => {
         if (ack.userEmail === currentUser.email) {
-            // --- THIS IS THE FIX ---
-            // Replaced serverTimestamp() with new Date() to avoid Firestore error.
             return { ...ack, status, notes, timestamp: new Date() };
         }
         return ack;
@@ -115,9 +111,9 @@ function Documents() {
   const handleRevisionClick = (doc) => { setSelectedDocument(doc); setIsRevisionModalOpen(true); };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedDocument) return;
+    if (!selectedDocument || !companyId) return;
     setIsDeleting(true);
-    await deleteDoc(doc(db, 'documents', selectedDocument.id));
+    await deleteDoc(doc(db, 'companies', companyId, 'documents', selectedDocument.id));
     setIsDeleteModalOpen(false);
     setSelectedDocument(null);
     setIsDeleting(false);

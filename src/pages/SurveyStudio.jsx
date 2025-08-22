@@ -110,7 +110,7 @@ const QuestionCard = ({ question, index, updateQuestion, removeQuestion, onDragS
 function SurveyStudio() {
   const { surveyId } = useParams();
   const navigate = useNavigate();
-  const { employees } = useAppContext();
+  const { employees, companyId, currentUser } = useAppContext();
 
   const [formData, setFormData] = useState({ title: '', description: '', isAnonymous: true });
   const [questions, setQuestions] = useState([]);
@@ -125,10 +125,11 @@ function SurveyStudio() {
 
   useEffect(() => {
     if (isEditMode) {
+      if (!companyId) return;
       setLoading(true);
       setPageTitle('Edit Survey');
       const fetchSurvey = async () => {
-        const docRef = doc(db, 'surveys', surveyId);
+        const docRef = doc(db, 'companies', companyId, 'surveys', surveyId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -151,7 +152,7 @@ function SurveyStudio() {
     } else {
         setParticipants(employees.map(e => e.email));
     }
-  }, [surveyId, isEditMode, navigate, employees]);
+  }, [surveyId, isEditMode, navigate, employees, companyId]);
   
   const addQuestion = () => setQuestions([...questions, { id: Date.now(), type: 'Open Text', text: '', options: [] }]);
   const removeQuestion = (id) => setQuestions(questions.filter(q => q.id !== id));
@@ -181,7 +182,7 @@ function SurveyStudio() {
 
 
   const handleSave = async (newStatus) => {
-    if (!formData.title.trim()) { setError('A survey title is required.'); return; }
+    if (!formData.title.trim() || !companyId) { setError('A survey title is required.'); return; }
     setError('');
     setLoading(true);
 
@@ -190,11 +191,11 @@ function SurveyStudio() {
       if (newStatus) surveyData.status = newStatus;
 
       if (isEditMode) {
-        const docRef = doc(db, 'surveys', surveyId);
+        const docRef = doc(db, 'companies', companyId, 'surveys', surveyId);
         await updateDoc(docRef, surveyData);
       } else {
-        const newSurvey = { ...surveyData, status: newStatus || 'Draft', responses: [], created: serverTimestamp(), createdBy: auth.currentUser.email };
-        const docRef = await addDoc(collection(db, 'surveys'), newSurvey);
+        const newSurvey = { ...surveyData, status: newStatus || 'Draft', responses: [], created: serverTimestamp(), createdBy: currentUser.email };
+        const docRef = await addDoc(collection(db, 'companies', companyId, 'surveys'), newSurvey);
         if (newStatus !== 'Active') {
           navigate(`/surveys/edit/${docRef.id}`);
           return;

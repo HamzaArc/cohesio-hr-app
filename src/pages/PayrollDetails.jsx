@@ -7,19 +7,21 @@ import { useAppContext } from '../contexts/AppContext';
 
 function PayrollDetails() {
   const { runId } = useParams();
-  const { employees } = useAppContext();
+  const { employees, companyId } = useAppContext();
   const [payrollRun, setPayrollRun] = useState(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!runId) { setLoading(false); return; }
-    const runRef = doc(db, 'payrollRuns', runId);
+    if (!runId || !companyId) { 
+        setLoading(false); 
+        return; 
+    }
+    const runRef = doc(db, 'companies', companyId, 'payrollRuns', runId);
     const unsubscribe = onSnapshot(runRef, (docSnap) => {
       if (docSnap.exists()) {
         const runData = { id: docSnap.id, ...docSnap.data() };
         setPayrollRun(runData);
-        // Pre-select the first employee if none is selected
         if (!selectedEmployeeId && Object.keys(runData.employeeData).length > 0) {
             setSelectedEmployeeId(Object.keys(runData.employeeData)[0]);
         }
@@ -27,7 +29,7 @@ function PayrollDetails() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [runId, selectedEmployeeId]);
+  }, [runId, companyId, selectedEmployeeId]);
 
   if (loading) { return <div className="p-8">Loading Payroll Record...</div>; }
   if (!payrollRun) { return <div className="p-8">Payroll Record not found.</div>; }

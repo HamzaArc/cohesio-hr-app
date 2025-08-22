@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { auth, db } from '../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, writeBatch, query, where, getDocs, limit, deleteDoc } from 'firebase/firestore';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Building, AtSign, Lock } from 'lucide-react';
 
 function SignUp() {
-  // ... state and handleSignUp function remain the same ...
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,29 +16,79 @@ function SignUp() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    if (!fullName || !companyName || !email || !password) {
-      setError('Please fill out all fields.');
+    if (!fullName || !email || !password) {
+      setError('Please fill out all required fields.');
       return;
     }
     setLoading(true);
     setError('');
 
     try {
+      // 1. Check for a pending invitation first
+      const allCompaniesRef = collection(db, 'companies');
+      const invitationsQuery = query(
+        collection(allCompaniesRef, '*/invitations'), 
+        where('email', '==', email), 
+        where('status', '==', 'pending'),
+        limit(1)
+      );
+
+      const invitationSnap = await getDocs(invitationsQuery);
+      let companyIdForUser = null;
+      let invitationId = null;
+      let invitingCompanyRef = null;
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      const batch = writeBatch(db);
 
-      await addDoc(collection(db, 'employees'), {
+      if (!invitationSnap.empty) {
+        // --- INVITATION FOUND ---
+        const invitationDoc = invitationSnap.docs[0];
+        invitationId = invitationDoc.id;
+        // The companyId is the parent document's ID
+        invitingCompanyRef = invitationDoc.ref.parent.parent;
+        companyIdForUser = invitingCompanyRef.id;
+        
+        // Delete the invitation
+        batch.delete(invitationDoc.ref);
+
+      } else {
+        // --- NO INVITATION, CREATE NEW COMPANY ---
+        if (!companyName) {
+            setError('Company name is required for new accounts.');
+            setLoading(false);
+            return;
+        }
+        const companyRef = doc(collection(db, 'companies'));
+        batch.set(companyRef, {
+          name: companyName,
+          createdAt: new Date(),
+          ownerUid: user.uid
+        });
+        companyIdForUser = companyRef.id;
+      }
+
+      // 2. Create user profile
+      const userRef = doc(db, 'users', user.uid);
+      batch.set(userRef, {
+        uid: user.uid,
+        email: user.email,
+        companyId: companyIdForUser,
+      });
+
+      // 3. Create employee record in the determined company
+      const employeeRef = doc(collection(db, 'companies', companyIdForUser, 'employees'));
+      batch.set(employeeRef, {
+        uid: user.uid,
         name: fullName,
         email: user.email,
-        companyName: companyName,
         status: 'active',
-        position: 'Administrator',
+        position: 'New Employee',
         hireDate: new Date().toISOString().split('T')[0],
-        employmentType: 'Full-time',
-        vacationBalance: 15,
-        sickBalance: 5,
-        personalBalance: 3,
       });
+
+      await batch.commit();
 
       navigate('/');
     } catch (err) {
@@ -64,7 +113,6 @@ function SignUp() {
         </div>
       </div>
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        {/* ... form remains the same ... */}
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
@@ -84,10 +132,10 @@ function SignUp() {
               </div>
             </div>
             <div>
-              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name</label>
+              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name <span className="text-gray-400">(if creating a new company)</span></label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Building className="h-5 w-5 text-gray-400" /></div>
-                <input id="companyName" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required className="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input id="companyName" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div>

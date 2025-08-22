@@ -1,14 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, updateDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { X, Link, User, Users } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 
 const documentCategories = ["Policy", "Handbook", "Contract", "Form", "Training Material", "Other"];
 
 function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpdated }) {
-  const { employees } = useAppContext();
+  const { employees, companyId } = useAppContext();
   const [name, setName] = useState('');
   const [fileURL, setFileURL] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
@@ -39,7 +38,7 @@ function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpd
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !fileURL) {
+    if (!name || !fileURL || !companyId) {
       setError('Please provide a name and a document link.');
       return;
     }
@@ -47,7 +46,7 @@ function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpd
     setError('');
 
     try {
-        const docRef = doc(db, 'documents', docToEdit.id);
+        const docRef = doc(db, 'companies', companyId, 'documents', docToEdit.id);
         const currentAcks = docToEdit.acknowledgments || [];
         
         let finalAssignedEmails = [];

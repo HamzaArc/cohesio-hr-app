@@ -9,7 +9,7 @@ const Step = ({ number, label, isActive }) => ( <div className="flex items-cente
 
 function RunPayroll() {
   const { runId } = useParams();
-  const { employees, loading: employeesLoading } = useAppContext();
+  const { employees, loading: employeesLoading, companyId } = useAppContext();
   const [payrollRun, setPayrollRun] = useState(null);
   const [employeeData, setEmployeeData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -17,14 +17,16 @@ function RunPayroll() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!runId) { setLoading(false); return; }
-    const runRef = doc(db, 'payrollRuns', runId);
+    if (!runId || !companyId) { 
+        setLoading(false); 
+        return; 
+    }
+    const runRef = doc(db, 'companies', companyId, 'payrollRuns', runId);
     const unsubscribe = onSnapshot(runRef, (docSnap) => {
         if (docSnap.exists()) {
             const run = { id: docSnap.id, ...docSnap.data() };
             setPayrollRun(run);
             
-            // Initialize employee data only once
             if (employees.length > 0 && Object.keys(employeeData).length === 0) {
                 const initialData = {};
                 employees.forEach(emp => {
@@ -47,7 +49,7 @@ function RunPayroll() {
         setLoading(false);
     });
     return () => unsubscribe();
-  }, [runId, employees, navigate]);
+  }, [runId, companyId, employees, navigate]);
 
   const handleDataChange = useCallback((empId, field, value) => {
     setEmployeeData(prev => ({
@@ -76,16 +78,18 @@ function RunPayroll() {
   }, [employeeData]);
 
   const handleSaveDraft = async () => {
+    if (!companyId) return;
     setIsSaving(true);
-    const runRef = doc(db, 'payrollRuns', runId);
+    const runRef = doc(db, 'companies', companyId, 'payrollRuns', runId);
     await updateDoc(runRef, { employeeData });
     setIsSaving(false);
   };
   
   const handleFinalize = async () => {
+      if (!companyId) return;
       if (!window.confirm("Are you sure you want to finalize this payroll run? This action cannot be undone.")) return;
       setIsSaving(true);
-      const runRef = doc(db, 'payrollRuns', runId);
+      const runRef = doc(db, 'companies', companyId, 'payrollRuns', runId);
       await updateDoc(runRef, {
           employeeData,
           status: 'Finalized',
@@ -113,11 +117,11 @@ function RunPayroll() {
                         <th className="p-2 font-semibold text-gray-600">Employee</th>
                         <th className="p-2 font-semibold text-gray-600">Base Salary</th>
                         <th className="p-2 font-semibold text-gray-600">Bonuses</th>
-                        <th className="p-2 font-semibold text-gray-600 text-green-600">Gross Pay</th>
+                        <th className="p-2 font-semibold text-gray-600">Gross Pay</th>
                         <th className="p-2 font-semibold text-gray-600">CNSS/AMO</th>
                         <th className="p-2 font-semibold text-gray-600">IR</th>
                         <th className="p-2 font-semibold text-gray-600">Other Deductions</th>
-                        <th className="p-2 font-semibold text-gray-600 text-red-600">Net Pay</th>
+                        <th className="p-2 font-semibold text-gray-600">Net Pay</th>
                     </tr>
                 </thead>
                 <tbody>

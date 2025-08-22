@@ -4,20 +4,23 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useAppContext } from '../contexts/AppContext';
 
 
 function Payslip({ payrollRun, employeeData, employeeProfile }) {
+  const { companyId } = useAppContext();
   const [companyInfo, setCompanyInfo] = useState(null);
 
   useEffect(() => {
-    const settingsRef = doc(db, 'companyPolicies', 'payroll');
+    if (!companyId) return;
+    const settingsRef = doc(db, 'companies', companyId, 'policies', 'payroll');
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
         setCompanyInfo(docSnap.data());
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [companyId]);
 
   if (!payrollRun || !employeeData || !employeeProfile) return null;
 
@@ -112,8 +115,6 @@ function Payslip({ payrollRun, employeeData, employeeProfile }) {
         </div>
         <hr className="my-4"/>
         <h2 className="text-center font-bold text-xl my-4">BULLETIN DE PAIE - {payrollRun.periodLabel}</h2>
-
-        {/* ... Payslip content identical to PDF generation for display ... */}
         
         <div className="text-right mt-8">
             <p className="font-bold text-lg">Net à Payer: {netPay.toFixed(2)} MAD</p>

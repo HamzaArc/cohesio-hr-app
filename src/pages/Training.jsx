@@ -10,20 +10,20 @@ import StatCard from '../components/StatCard';
 
 // Moved TrainingDetailsModal into this file to have everything in one place
 function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
+  const { companyId, currentUser } = useAppContext();
   const [steps, setSteps] = useState([]);
   const [notes, setNotes] = useState('');
   const [editingNote, setEditingNote] = useState('');
   const [currentStepId, setCurrentStepId] = useState(null);
   const [editingStepId, setEditingStepId] = useState(null);
   const [myParticipant, setMyParticipant] = useState(null);
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    if (!program || !currentUser) return;
+    if (!program || !currentUser || !companyId) return;
 
     const myParticipantRecord = program.participants.find(p => p.userEmail === currentUser.email);
     if (myParticipantRecord) {
-        const participantRef = doc(db, 'training', program.id, 'participants', myParticipantRecord.id);
+        const participantRef = doc(db, 'companies', companyId, 'training', program.id, 'participants', myParticipantRecord.id);
         const unsubscribe = onSnapshot(participantRef, (docSnap) => {
             if (docSnap.exists()) {
                 setMyParticipant({ id: docSnap.id, ...docSnap.data() });
@@ -31,17 +31,17 @@ function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
         });
         return () => unsubscribe();
     }
-  }, [program, currentUser]);
+  }, [program, currentUser, companyId]);
   
   useEffect(() => {
-    if (program) {
-      const stepsQuery = query(collection(db, 'training', program.id, 'steps'), orderBy('order'));
+    if (program && companyId) {
+      const stepsQuery = query(collection(db, 'companies', companyId, 'training', program.id, 'steps'), orderBy('order'));
       const unsubscribeSteps = onSnapshot(stepsQuery, (snapshot) => {
         setSteps(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       });
       return () => unsubscribeSteps();
     }
-  }, [program]);
+  }, [program, companyId]);
 
   const allParticipantsStatus = useMemo(() => {
     if (!program || !employees) return [];
@@ -54,9 +54,9 @@ function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
   }, [program, employees]);
 
   const handleCompleteStep = async () => {
-    if (!currentStepId || !myParticipant) return;
+    if (!currentStepId || !myParticipant || !companyId) return;
 
-    const participantRef = doc(db, 'training', program.id, 'participants', myParticipant.id);
+    const participantRef = doc(db, 'companies', companyId, 'training', program.id, 'participants', myParticipant.id);
     const currentStepsStatus = Array.isArray(myParticipant.stepsStatus) ? myParticipant.stepsStatus : [];
 
     let stepFound = false;
@@ -89,7 +89,8 @@ function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
   };
 
   const handleUpdateNote = async (stepId) => {
-    const participantRef = doc(db, 'training', program.id, 'participants', myParticipant.id);
+    if (!companyId || !myParticipant) return;
+    const participantRef = doc(db, 'companies', companyId, 'training', program.id, 'participants', myParticipant.id);
     const updatedSteps = myParticipant.stepsStatus.map(s => 
         s.stepId === stepId ? { ...s, notes: editingNote } : s
     );
@@ -197,7 +198,7 @@ const categoryColors = {
 };
 
 function Training() {
-  const { employees } = useAppContext();
+  const { employees, companyId, currentUser } = useAppContext();
   const [allPrograms, setAllPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -207,15 +208,18 @@ function Training() {
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('My Training');
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    const q = query(collection(db, 'training'), orderBy('created', 'desc'));
+    if (!companyId) {
+        setLoading(false);
+        return;
+    }
+    const q = query(collection(db, 'companies', companyId, 'training'), orderBy('created', 'desc'));
     
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       const programsList = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
         const programData = { id: docSnapshot.id, ...docSnapshot.data() };
-        const participantsCollection = collection(db, 'training', docSnapshot.id, 'participants');
+        const participantsCollection = collection(db, 'companies', companyId, 'training', docSnapshot.id, 'participants');
         const participantsSnapshot = await getDocs(participantsCollection);
         programData.participants = participantsSnapshot.docs.map(p => ({ id: p.id, ...p.data() }));
         return programData;
@@ -224,7 +228,7 @@ function Training() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [companyId]);
 
   const { myPrograms, stats } = useMemo(() => {
     if (!currentUser) return { myPrograms: [], stats: {} };
@@ -250,9 +254,9 @@ function Training() {
   const handleDetailsClick = (program) => { setSelectedProgram(program); setIsDetailsModalOpen(true); };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedProgram) return;
+    if (!selectedProgram || !companyId) return;
     setIsDeleting(true);
-    await deleteDoc(doc(db, 'training', selectedProgram.id));
+    await deleteDoc(doc(db, 'companies', companyId, 'training', selectedProgram.id));
     setIsDeleteModalOpen(false);
     setSelectedProgram(null);
     setIsDeleting(false);

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-// --- THIS LINE IS THE FIX ---
 import { Edit2, DollarSign, Briefcase, User, Users, Home, Phone, Shield, Plane, Heart, Sun } from 'lucide-react';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import OnboardingPlan from '../components/OnboardingPlan';
 import SkillsAndCerts from '../components/SkillsAndCerts';
+import { useAppContext } from '../contexts/AppContext';
 
 // Re-using the components from the other profile page
 const ProfileTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`} > {label} </button> );
@@ -14,20 +14,20 @@ const InfoField = ({ icon, label, value }) => ( <div className="flex items-start
 
 
 function Profile() {
+  const { companyId, currentUser } = useAppContext();
   const [activeTab, setActiveTab] = useState('Job');
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    if (!currentUser) { 
+    if (!currentUser || !companyId) { 
       setLoading(false); 
       return; 
     }
 
     setLoading(true);
-    const employeesRef = collection(db, 'employees');
+    const employeesRef = collection(db, 'companies', companyId, 'employees');
     const q = query(employeesRef, where("email", "==", currentUser.email));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -41,7 +41,7 @@ function Profile() {
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, companyId]);
 
   if (loading) return <div className="p-8">Loading Your Profile...</div>;
   if (!employee) return <div className="p-8">Could not find an employee profile linked to your account.</div>;

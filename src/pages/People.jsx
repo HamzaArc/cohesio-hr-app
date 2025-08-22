@@ -1,45 +1,34 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash, Users, UserPlus, Share2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash, Users, UserPlus, Share2, Mail } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { useAppContext } from '../contexts/AppContext';
 import AddEmployeeModal from '../components/AddEmployeeModal';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import OrgChart from '../components/OrgChart';
 import StatCard from '../components/StatCard';
+import InviteEmployeeModal from '../components/InviteEmployeeModal'; // Import the new modal
 
 const PeopleTab = ({ label, icon, active, onClick }) => ( <button onClick={onClick} className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{icon}{label}</button> );
 
 function People() {
-  const [allEmployees, setAllEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { employees: allEmployees, loading, companyId } = useAppContext();
   const [activeTab, setActiveTab] = useState('Directory');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false); // State for the new modal
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    setLoading(true);
-    const employeesCollection = collection(db, "employees");
-    const q = query(employeesCollection, orderBy("name"));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const employeesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAllEmployees(employeesList);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const filteredEmployees = useMemo(() => {
     return allEmployees.filter(emp =>
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.position.toLowerCase().includes(searchTerm.toLowerCase())
+      (emp.position && emp.position.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [allEmployees, searchTerm]);
   
@@ -47,20 +36,20 @@ function People() {
       const today = new Date();
       const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       return allEmployees.filter(emp => {
+          if (!emp.hireDate) return false;
           const hireDate = new Date(emp.hireDate);
           return hireDate >= firstDayOfMonth;
       }).length;
   }, [allEmployees]);
 
-
   const handleEditClick = (employee) => { setSelectedEmployee(employee); setIsEditModalOpen(true); };
   const handleDeleteClick = (employee) => { setSelectedEmployee(employee); setIsDeleteModalOpen(true); };
   
   const handleDeleteConfirm = async () => {
-    if (!selectedEmployee) return;
+    if (!selectedEmployee || !companyId) return;
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'employees', selectedEmployee.id));
+      await deleteDoc(doc(db, 'companies', companyId, 'employees', selectedEmployee.id));
       setIsDeleteModalOpen(false);
       setSelectedEmployee(null);
     } catch (err) {
@@ -139,20 +128,24 @@ function People() {
       <AddEmployeeModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onEmployeeAdded={() => setIsAddModalOpen(false)} />
       <EditEmployeeModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} employee={selectedEmployee} onEmployeeUpdated={() => setIsEditModalOpen(false)} />
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={selectedEmployee?.name} loading={isDeleting} />
+      <InviteEmployeeModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} onInvitationSent={() => setIsInviteModalOpen(false)} />
 
       <div className="p-8">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">People Directory</h1>
-          <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
-            <Plus size={20} className="mr-2" />Add Employee
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setIsInviteModalOpen(true)} className="bg-white text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 border border-gray-300 flex items-center shadow-sm">
+                <Mail size={16} className="mr-2"/>Invite Employee
+            </button>
+            <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
+                <Plus size={20} className="mr-2" />Add Employee
+            </button>
+          </div>
         </header>
 
-        {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard icon={<Users size={24}/>} title="Total Employees" value={allEmployees.length} />
             <StatCard icon={<UserPlus size={24}/>} title="New Hires This Month" value={newHiresThisMonth} />
-            {/* Placeholders for future stats */}
             <StatCard icon={<Users size={24}/>} title="Departments" value={new Set(allEmployees.map(e => e.department)).size} />
             <StatCard icon={<Users size={24}/>} title="Avg. Tenure" value="2.1 years" />
         </div>

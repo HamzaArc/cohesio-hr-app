@@ -15,7 +15,7 @@ const BalanceCard = ({ icon, title, balance, bgColor, iconColor }) => ( <div cla
 const MainTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 
 function TimeOff() {
-  const { employees, loading: employeesLoading } = useAppContext();
+  const { employees, loading: employeesLoading, companyId, currentUser } = useAppContext();
   const [allRequests, setAllRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
@@ -35,21 +35,24 @@ function TimeOff() {
   const [activeTab, setActiveTab] = useState('Requests');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [selectedLeaveType, setSelectedLeaveType] = useState('All');
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    if (!currentUser) { setRequestsLoading(false); return; }
-    const policyRef = doc(db, 'companyPolicies', 'timeOff');
+    if (!currentUser || !companyId) { 
+        setRequestsLoading(false); 
+        return; 
+    }
+    const policyRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
     const holidaysColRef = collection(policyRef, 'holidays');
     const unsubPolicy = onSnapshot(policyRef, (docSnap) => { if (docSnap.exists()) setWeekends(docSnap.data().weekends || { sat: true, sun: true }); });
     const unsubHolidays = onSnapshot(holidaysColRef, (snapshot) => { setHolidays(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const requestsQuery = query(collection(db, 'timeOffRequests'), orderBy('requestedAt', 'desc'));
+    
+    const requestsQuery = query(collection(db, 'companies', companyId, 'timeOffRequests'), orderBy('requestedAt', 'desc'));
     const unsubRequests = onSnapshot(requestsQuery, (reqSnapshot) => {
       setAllRequests(reqSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
       setRequestsLoading(false);
     });
     return () => { unsubPolicy(); unsubHolidays(); unsubRequests(); };
-  }, [currentUser]);
+  }, [currentUser, companyId]);
 
   useEffect(() => {
     if (currentUser && employees.length > 0) {
@@ -103,37 +106,45 @@ function TimeOff() {
     });
   }, [requestsWithNameAndDept, selectedDepartments, selectedLeaveType, scope, currentUser, myTeam]);
 
-  const addHistoryLog = async (requestId, action) => { await addDoc(collection(db, 'timeOffRequests', requestId, 'history'), { action, timestamp: serverTimestamp() }); };
+  const addHistoryLog = async (requestId, action) => { 
+      if (!companyId) return;
+      await addDoc(collection(db, 'companies', companyId, 'timeOffRequests', requestId, 'history'), { action, timestamp: serverTimestamp() }); 
+    };
   const handleRequestSubmitted = (newRequestId) => { setIsAddModalOpen(false); addHistoryLog(newRequestId, 'Created'); };
 
   const handleUpdateRequestStatus = async (request, newStatus) => {
+    if (!companyId) return;
     const employee = employees.find(e => e.email === request.userEmail);
     if (!employee) { console.error("Could not find employee to update balance."); return; }
-    const requestRef = doc(db, 'timeOffRequests', request.id);
-    const employeeRef = doc(db, 'employees', employee.id);
+
+    const requestRef = doc(db, 'companies', companyId, 'timeOffRequests', request.id);
+    const employeeRef = doc(db, 'companies', companyId, 'employees', employee.id);
+    
     const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance' };
     const balanceField = balanceFieldMap[request.leaveType];
     const days = request.totalDays;
     const batch = writeBatch(db);
+
     batch.update(requestRef, { status: newStatus });
     if (newStatus === 'Denied' && request.status === 'Pending') { batch.update(employeeRef, { [balanceField]: increment(days) }); }
+    
     await batch.commit();
     await addHistoryLog(request.id, newStatus);
   };
 
   const handleDeleteClick = (request) => { setSelectedRequest(request); setIsDeleteModalOpen(true); };
   const handleDeleteConfirm = async () => {
-    if (!selectedRequest) return;
+    if (!selectedRequest || !companyId) return;
     setIsDeleting(true);
     const employee = employees.find(e => e.email === selectedRequest.userEmail);
-    const requestRef = doc(db, 'timeOffRequests', selectedRequest.id);
+    const requestRef = doc(db, 'companies', companyId, 'timeOffRequests', selectedRequest.id);
     const batch = writeBatch(db);
     batch.delete(requestRef);
     if (employee && selectedRequest.status === 'Pending') {
         const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance' };
         const balanceField = balanceFieldMap[selectedRequest.leaveType];
         const days = selectedRequest.totalDays;
-        const employeeRef = doc(db, 'employees', employee.id);
+        const employeeRef = doc(db, 'companies', companyId, 'employees', employee.id);
         batch.update(employeeRef, { [balanceField]: increment(days) });
     }
     await batch.commit();

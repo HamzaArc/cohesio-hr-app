@@ -3,19 +3,21 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { db, auth } from '../firebase';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Shield, Send } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 function TakeSurvey() {
   const { surveyId } = useParams();
   const navigate = useNavigate();
+  const { companyId, currentUser } = useAppContext();
   const [survey, setSurvey] = useState(null);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
+    if (!surveyId || !companyId || !currentUser) return;
     const fetchSurvey = async () => {
-      const docRef = doc(db, 'surveys', surveyId);
+      const docRef = doc(db, 'companies', companyId, 'surveys', surveyId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const surveyData = { id: docSnap.id, ...docSnap.data() };
@@ -29,13 +31,14 @@ function TakeSurvey() {
       setLoading(false);
     };
     fetchSurvey();
-  }, [surveyId, navigate, currentUser]);
+  }, [surveyId, navigate, currentUser, companyId]);
 
   const handleAnswerChange = (questionId, value) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
   const handleSubmit = async () => {
+    if (!companyId || !currentUser) return;
     setLoading(true);
     setError('');
     try {
@@ -44,7 +47,7 @@ function TakeSurvey() {
             submittedAt: new Date(),
             answers,
         };
-        const surveyRef = doc(db, 'surveys', surveyId);
+        const surveyRef = doc(db, 'companies', companyId, 'surveys', surveyId);
         await updateDoc(surveyRef, {
             responses: arrayUnion(response)
         });

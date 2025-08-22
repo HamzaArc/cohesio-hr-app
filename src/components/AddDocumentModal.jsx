@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { X, Link, User, Users } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 
 const documentCategories = ["Policy", "Handbook", "Contract", "Form", "Training Material", "Other"];
 
 function AddDocumentModal({ isOpen, onClose, onDocumentAdded }) {
-  const { employees } = useAppContext();
+  const { employees, companyId } = useAppContext();
   const [name, setName] = useState('');
   const [fileURL, setFileURL] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
@@ -26,7 +26,7 @@ function AddDocumentModal({ isOpen, onClose, onDocumentAdded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !fileURL) {
+    if (!name || !fileURL || !companyId) {
       setError('Please provide a name and a document link.');
       return;
     }
@@ -48,7 +48,7 @@ function AddDocumentModal({ isOpen, onClose, onDocumentAdded }) {
         notes: ''
       }));
 
-      await addDoc(collection(db, 'documents'), {
+      await addDoc(collection(db, 'companies', companyId, 'documents'), {
         name,
         fileURL,
         category,

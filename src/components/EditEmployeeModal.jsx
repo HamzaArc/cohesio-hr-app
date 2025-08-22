@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { doc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { X, AlertCircle } from 'lucide-react';
 import DatalistInput from './DatalistInput'; // Import the new component
+import { useAppContext } from '../contexts/AppContext';
 
 // Reusable input component with validation display
 const ValidatedInput = ({ id, label, value, onChange, error, ...props }) => (
@@ -20,6 +21,7 @@ const ValidatedInput = ({ id, label, value, onChange, error, ...props }) => (
 );
 
 function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
+  const { companyId } = useAppContext();
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
   const [allEmployees, setAllEmployees] = useState([]);
@@ -39,9 +41,9 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
       });
       setErrors({});
     }
-    if (isOpen && employee) {
+    if (isOpen && employee && companyId) {
         const fetchData = async () => {
-            const snapshot = await getDocs(collection(db, 'employees'));
+            const snapshot = await getDocs(collection(db, 'companies', companyId, 'employees'));
             const employeesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllEmployees(employeesList.filter(e => e.id !== employee?.id));
 
@@ -50,7 +52,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
         };
         fetchData();
     }
-  }, [isOpen, employee]);
+  }, [isOpen, employee, companyId]);
 
   const validate = (data = formData) => {
       const newErrors = {};
@@ -78,13 +80,13 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) {
+    if (!validate() || !companyId) {
       return;
     }
     setLoading(true);
 
     try {
-      const employeeRef = doc(db, 'employees', employee.id);
+      const employeeRef = doc(db, 'companies', companyId, 'employees', employee.id);
       await updateDoc(employeeRef, {
         ...formData,
         vacationBalance: Number(formData.vacationBalance) || 0,
@@ -123,7 +125,6 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
             <h3 className="md:col-span-2 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Job Information</h3>
             <ValidatedInput id="position" label="Position" value={formData.position} onChange={handleChange} error={errors.position} type="text" required />
             
-            {/* --- DEPARTMENT FIELD UPDATED --- */}
             <DatalistInput id="department" label="Department" value={formData.department} onChange={handleChange} error={errors.department} options={departments} type="text" placeholder="Select or type to create new"/>
 
             <ValidatedInput id="hireDate" label="Hire Date" value={formData.hireDate} onChange={handleChange} error={errors.hireDate} type="date" required />

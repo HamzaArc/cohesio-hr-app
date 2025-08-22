@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, writeBatch, increment, query, where, getDocs } from 'firebase/firestore';
 import { X, AlertCircle, Users, ArrowRight } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 // --- Helper Functions ---
 const isWeekend = (date, weekends = { sat: true, sun: true }) => {
@@ -51,6 +52,7 @@ function calculateBusinessDays(startDate, endDate, weekends, holidays) {
 
 // --- Main Component ---
 function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserProfile, myRequests, weekends, holidays, allRequests, myTeam }) {
+  const { companyId, currentUser } = useAppContext();
   const [leaveType, setLeaveType] = useState('Vacation');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -83,13 +85,15 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (error || !startDate || !endDate || totalDays <= 0) { setError('Please select a valid date range.'); return; }
+    if (error || !startDate || !endDate || totalDays <= 0 || !companyId) { 
+        setError('Please select a valid date range.'); 
+        return; 
+    }
     setLoading(true);
     setError('');
     setSuggestedDates(null);
 
     try {
-      const currentUser = auth.currentUser;
       if (!currentUser || !currentUserProfile) throw new Error("Could not find user profile.");
 
       const balanceField = balanceFieldMap[leaveType];
@@ -101,8 +105,8 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
         return;
       }
       
-      // --- CONFLICT DETECTION LOGIC RESTORED ---
-      const userExistingRequestsQuery = query(collection(db, 'timeOffRequests'), where("userEmail", "==", currentUser.email), where("status", "in", ["Pending", "Approved"]));
+      const requestsRef = collection(db, 'companies', companyId, 'timeOffRequests');
+      const userExistingRequestsQuery = query(requestsRef, where("userEmail", "==", currentUser.email), where("status", "in", ["Pending", "Approved"]));
       const userRequestsSnapshot = await getDocs(userExistingRequestsQuery);
       const userExistingRequests = userRequestsSnapshot.docs.map(doc => doc.data());
       
@@ -128,16 +132,15 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
           setLoading(false);
           return;
       }
-      // --- END OF RESTORED LOGIC ---
 
       const batch = writeBatch(db);
-      const newRequestRef = doc(collection(db, 'timeOffRequests'));
+      const newRequestRef = doc(requestsRef);
       batch.set(newRequestRef, { 
         leaveType, startDate, endDate, description, totalDays,
         status: 'Pending', requestedAt: serverTimestamp(), userEmail: currentUser.email,
       });
       if (leaveType !== 'Personal (Unpaid)') {
-        const employeeRef = doc(db, 'employees', currentUserProfile.id);
+        const employeeRef = doc(db, 'companies', companyId, 'employees', currentUserProfile.id);
         batch.update(employeeRef, { [balanceField]: increment(-totalDays) });
       }
       await batch.commit();

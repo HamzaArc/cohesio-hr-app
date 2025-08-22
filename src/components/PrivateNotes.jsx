@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
 import { MessageSquare } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 function PrivateNotes({ employeeId }) {
+  const { companyId } = useAppContext();
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!employeeId) return;
-    const notesColRef = collection(db, "employees", employeeId, "privateNotes");
+    if (!employeeId || !companyId) return;
+    const notesColRef = collection(db, "companies", companyId, "employees", employeeId, "privateNotes");
     const q = query(notesColRef, orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setNotes(snapshot.docs.map(doc => ({ 
@@ -21,12 +23,12 @@ function PrivateNotes({ employeeId }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [employeeId]);
+  }, [employeeId, companyId]);
 
   const handleAddNote = async (e) => {
     e.preventDefault();
-    if (!newNote.trim()) return;
-    const notesColRef = collection(db, "employees", employeeId, "privateNotes");
+    if (!newNote.trim() || !companyId) return;
+    const notesColRef = collection(db, "companies", companyId, "employees", employeeId, "privateNotes");
     await addDoc(notesColRef, {
       text: newNote,
       timestamp: serverTimestamp()

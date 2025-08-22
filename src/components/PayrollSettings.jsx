@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Save } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 function PayrollSettings() {
+  const { companyId } = useAppContext();
   const [settings, setSettings] = useState({
     companyName: '',
     companyAddress: '',
@@ -15,8 +17,12 @@ function PayrollSettings() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
+    if (!companyId) {
+      setLoading(false);
+      return;
+    }
     const fetchSettings = async () => {
-      const docRef = doc(db, 'companyPolicies', 'payroll');
+      const docRef = doc(db, 'companies', companyId, 'policies', 'payroll');
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setSettings(docSnap.data());
@@ -24,13 +30,14 @@ function PayrollSettings() {
       setLoading(false);
     };
     fetchSettings();
-  }, []);
+  }, [companyId]);
 
   const handleSave = async () => {
+    if (!companyId) return;
     setIsSaving(true);
     setSaveSuccess(false);
     try {
-      const docRef = doc(db, 'companyPolicies', 'payroll');
+      const docRef = doc(db, 'companies', companyId, 'policies', 'payroll');
       await setDoc(docRef, settings, { merge: true });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);

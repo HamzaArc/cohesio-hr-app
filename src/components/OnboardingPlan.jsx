@@ -2,37 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Plus, Trash2 } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 function OnboardingPlan({ employeeId }) {
+  const { companyId } = useAppContext();
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!employeeId) return;
-    const tasksColRef = collection(db, "employees", employeeId, "onboardingTasks");
+    if (!employeeId || !companyId) return;
+    const tasksColRef = collection(db, "companies", companyId, "employees", employeeId, "onboardingTasks");
     const unsubscribe = onSnapshot(tasksColRef, (snapshot) => {
       setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [employeeId]);
+  }, [employeeId, companyId]);
 
   const handleToggleTask = async (taskId, currentStatus) => {
-    const taskRef = doc(db, "employees", employeeId, "onboardingTasks", taskId);
+    const taskRef = doc(db, "companies", companyId, "employees", employeeId, "onboardingTasks", taskId);
     await updateDoc(taskRef, { completed: !currentStatus });
   };
 
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
-    const tasksColRef = collection(db, "employees", employeeId, "onboardingTasks");
+    const tasksColRef = collection(db, "companies", companyId, "employees", employeeId, "onboardingTasks");
     await addDoc(tasksColRef, { text: newTask, completed: false });
     setNewTask('');
   };
 
   const handleDeleteTask = async (taskId) => {
-    const taskRef = doc(db, "employees", employeeId, "onboardingTasks", taskId);
+    const taskRef = doc(db, "companies", companyId, "employees", employeeId, "onboardingTasks", taskId);
     await deleteDoc(taskRef);
   };
   

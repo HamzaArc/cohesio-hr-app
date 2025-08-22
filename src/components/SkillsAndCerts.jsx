@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { Plus, Trash2, Award, Calendar, AlertTriangle } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 function SkillsAndCerts({ employeeId }) {
+  const { companyId } = useAppContext();
   const [items, setItems] = useState([]);
   const [newItemText, setNewItemText] = useState('');
   const [newItemType, setNewItemType] = useState('Skill');
@@ -11,19 +13,19 @@ function SkillsAndCerts({ employeeId }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!employeeId) return;
-    const itemsColRef = collection(db, "employees", employeeId, "skillsAndCerts");
+    if (!employeeId || !companyId) return;
+    const itemsColRef = collection(db, "companies", companyId, "employees", employeeId, "skillsAndCerts");
     const unsubscribe = onSnapshot(itemsColRef, (snapshot) => {
       setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [employeeId]);
+  }, [employeeId, companyId]);
 
   const handleAddItem = async (e) => {
     e.preventDefault();
-    if (!newItemText.trim()) return;
-    const itemsColRef = collection(db, "employees", employeeId, "skillsAndCerts");
+    if (!newItemText.trim() || !companyId) return;
+    const itemsColRef = collection(db, "companies", companyId, "employees", employeeId, "skillsAndCerts");
     const newItem = {
         text: newItemText,
         type: newItemType,
@@ -36,7 +38,8 @@ function SkillsAndCerts({ employeeId }) {
   };
 
   const handleDeleteItem = async (itemId) => {
-    const itemRef = doc(db, "employees", employeeId, "skillsAndCerts", itemId);
+    if (!companyId) return;
+    const itemRef = doc(db, "companies", companyId, "employees", employeeId, "skillsAndCerts", itemId);
     await deleteDoc(itemRef);
   };
   

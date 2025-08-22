@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { X } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 function AddJourneyEventModal({ isOpen, onClose, onEventAdded, employeeId }) {
+  const { companyId } = useAppContext();
   const [eventType, setEventType] = useState('Salary Change');
   const [effectiveDate, setEffectiveDate] = useState('');
   const [details, setDetails] = useState('');
@@ -12,7 +14,7 @@ function AddJourneyEventModal({ isOpen, onClose, onEventAdded, employeeId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!eventType || !effectiveDate || !details) {
+    if (!eventType || !effectiveDate || !details || !companyId) {
       setError('Please fill out all fields.');
       return;
     }
@@ -21,7 +23,7 @@ function AddJourneyEventModal({ isOpen, onClose, onEventAdded, employeeId }) {
 
     try {
       // We create the event inside a subcollection of the employee
-      const journeyCollectionRef = collection(db, 'employees', employeeId, 'journey');
+      const journeyCollectionRef = collection(db, 'companies', companyId, 'employees', employeeId, 'journey');
       await addDoc(journeyCollectionRef, {
         type: eventType,
         date: effectiveDate,

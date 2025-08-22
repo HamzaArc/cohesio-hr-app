@@ -10,7 +10,7 @@ import { useAppContext } from '../contexts/AppContext';
 const SurveyTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 
 function Surveys() {
-  const { employees } = useAppContext();
+  const { employees, companyId, currentUser } = useAppContext();
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -18,16 +18,19 @@ function Surveys() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('Admin View');
   const navigate = useNavigate();
-  const currentUser = auth.currentUser;
 
   useEffect(() => {
-    const q = query(collection(db, 'surveys'), orderBy('created', 'desc'));
+    if (!companyId) {
+        setLoading(false);
+        return;
+    }
+    const q = query(collection(db, 'companies', companyId, 'surveys'), orderBy('created', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setSurveys(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [companyId]);
 
   const { mySurveys, stats } = useMemo(() => {
     if (!currentUser) return { mySurveys: [], stats: {} };
@@ -56,9 +59,9 @@ function Surveys() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedSurvey) return;
+    if (!selectedSurvey || !companyId) return;
     setIsDeleting(true);
-    await deleteDoc(doc(db, 'surveys', selectedSurvey.id));
+    await deleteDoc(doc(db, 'companies', companyId, 'surveys', selectedSurvey.id));
     setIsDeleteModalOpen(false);
     setSelectedSurvey(null);
     setIsDeleting(false);

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { X } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 const trainingCategories = ["Onboarding", "Compliance", "Leadership", "Sales", "Technical", "Other"];
 
 function EditTrainingModal({ isOpen, onClose, program, onProgramUpdated }) {
+  const { companyId } = useAppContext();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Onboarding');
@@ -24,12 +26,12 @@ function EditTrainingModal({ isOpen, onClose, program, onProgramUpdated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title) { setError('Please enter a program title.'); return; }
+    if (!title || !companyId) { setError('Please enter a program title.'); return; }
     setLoading(true);
     setError('');
 
     try {
-      const docRef = doc(db, 'training', program.id);
+      const docRef = doc(db, 'companies', companyId, 'training', program.id);
       await updateDoc(docRef, {
         title,
         description,

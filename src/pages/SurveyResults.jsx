@@ -9,14 +9,15 @@ import { useAppContext } from '../contexts/AppContext';
 
 function SurveyResults() {
   const { surveyId } = useParams();
-  const { employees } = useAppContext();
+  const { employees, companyId } = useAppContext();
   const [survey, setSurvey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Results');
 
   useEffect(() => {
+    if (!surveyId || !companyId) return;
     const fetchSurvey = async () => {
-      const docRef = doc(db, 'surveys', surveyId);
+      const docRef = doc(db, 'companies', companyId, 'surveys', surveyId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setSurvey({ id: docSnap.id, ...docSnap.data() });
@@ -24,7 +25,7 @@ function SurveyResults() {
       setLoading(false);
     };
     fetchSurvey();
-  }, [surveyId]);
+  }, [surveyId, companyId]);
 
   const { resultsData, participationData, stats } = useMemo(() => {
     if (!survey || employees.length === 0) return { resultsData: {}, participationData: [], stats: {} };

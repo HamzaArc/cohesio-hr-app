@@ -7,7 +7,7 @@ import { useAppContext } from '../contexts/AppContext';
 const trainingCategories = ["Onboarding", "Compliance", "Leadership", "Sales", "Technical", "Other"];
 
 function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
-  const { employees } = useAppContext();
+  const { employees, companyId } = useAppContext();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Onboarding');
@@ -32,7 +32,7 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || steps.some(s => !s.text.trim())) {
+    if (!title || steps.some(s => !s.text.trim()) || !companyId) {
       setError('Please provide a title and ensure all steps have text.');
       return;
     }
@@ -41,7 +41,7 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
 
     try {
       const batch = writeBatch(db);
-      const programRef = doc(collection(db, 'training'));
+      const programRef = doc(collection(db, 'companies', companyId, 'training'));
       
       batch.set(programRef, {
         title,
@@ -54,7 +54,7 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
       });
 
       steps.forEach((step, index) => {
-        const stepRef = doc(collection(db, 'training', programRef.id, 'steps'));
+        const stepRef = doc(collection(db, 'companies', companyId, 'training', programRef.id, 'steps'));
         batch.set(stepRef, { text: step.text, order: index });
       });
       
@@ -66,7 +66,7 @@ function AddTrainingModal({ isOpen, onClose, onProgramAdded }) {
       }
 
       finalAssignedEmails.forEach(email => {
-          const participantRef = doc(collection(db, 'training', programRef.id, 'participants'));
+          const participantRef = doc(collection(db, 'companies', companyId, 'training', programRef.id, 'participants'));
           batch.set(participantRef, {
             userEmail: email,
             status: 'Assigned',

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, onSnapshot, addDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Plus, Trash2, BrainCircuit, Save, Zap, AlertCircle } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 const countries = ["Canada", "USA", "UK", "Germany", "France", "Australia"];
 
 function TimeOffSettings() {
-  // State for all policies
+  const { companyId } = useAppContext();
   const [weekends, setWeekends] = useState({ sat: true, sun: true });
   const [holidays, setHolidays] = useState([]);
   const [resetPolicy, setResetPolicy] = useState({
@@ -21,7 +22,6 @@ function TimeOffSettings() {
     lastResetYear: null,
   });
 
-  // UI State
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('Canada');
@@ -33,7 +33,11 @@ function TimeOffSettings() {
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
-    const policyRef = doc(db, 'companyPolicies', 'timeOff');
+    if (!companyId) {
+        setLoading(false);
+        return;
+    }
+    const policyRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
     const holidaysColRef = collection(policyRef, 'holidays');
 
     const unsubscribePolicy = onSnapshot(policyRef, (docSnap) => {
@@ -52,28 +56,31 @@ function TimeOffSettings() {
     });
 
     return () => { unsubscribePolicy(); unsubscribeHolidays(); };
-  }, []);
+  }, [companyId]);
 
   const handleWeekendChange = async (day) => {
+    if (!companyId) return;
     const newWeekends = { ...weekends, [day]: !weekends[day] };
     setWeekends(newWeekends);
-    await setDoc(doc(db, 'companyPolicies', 'timeOff'), { weekends: newWeekends }, { merge: true });
+    await setDoc(doc(db, 'companies', companyId, 'policies', 'timeOff'), { weekends: newWeekends }, { merge: true });
   };
 
   const handleAddHoliday = async (e) => {
     e.preventDefault();
-    if (!newHolidayName || !newHolidayDate) return;
-    const policyRef = doc(db, 'companyPolicies', 'timeOff');
+    if (!newHolidayName || !newHolidayDate || !companyId) return;
+    const policyRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
     await addDoc(collection(policyRef, 'holidays'), { name: newHolidayName, date: newHolidayDate });
     setNewHolidayName('');
     setNewHolidayDate('');
   };
 
   const handleDeleteHoliday = async (holidayId) => {
-    await deleteDoc(doc(db, 'companyPolicies', 'timeOff', 'holidays', holidayId));
+    if (!companyId) return;
+    await deleteDoc(doc(db, 'companies', companyId, 'policies', 'timeOff', 'holidays', holidayId));
   };
 
   const handleFetchHolidays = async () => {
+    if (!companyId) return;
     setAiLoading(true);
     const prompt = `List all official public holidays for ${selectedCountry} for the year ${selectedYear}.`;
 
@@ -98,8 +105,10 @@ function TimeOffSettings() {
                 }
             }
         };
-
-        const apiKey = "YOUR_GEMINI_API_KEY"; // Replace with your key
+        
+        // NOTE: This API key is a placeholder and will not work.
+        // Replace "YOUR_GEMINI_API_KEY" with a valid key to enable this feature.
+        const apiKey = "YOUR_GEMINI_API_KEY";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         const response = await fetch(apiUrl, {
@@ -120,7 +129,7 @@ function TimeOffSettings() {
         if (text) {
             const fetchedHolidays = JSON.parse(text);
             const batch = writeBatch(db);
-            const policyRef = doc(db, 'companyPolicies', 'timeOff');
+            const policyRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
 
             fetchedHolidays.forEach(holiday => {
                 const newHolidayRef = doc(collection(policyRef, 'holidays'));
@@ -140,16 +149,18 @@ function TimeOffSettings() {
     }
   };
 
+
   const handlePolicyChange = (e) => {
     const { id, value, type, checked } = e.target;
     setResetPolicy(prev => ({ ...prev, [id]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSavePolicy = async () => {
+    if (!companyId) return;
     setIsSaving(true);
     setSaveSuccess(false);
     try {
-      const docRef = doc(db, 'companyPolicies', 'timeOff');
+      const docRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
       await setDoc(docRef, { resetPolicy }, { merge: true });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -162,6 +173,7 @@ function TimeOffSettings() {
   };
 
   const handleManualReset = async () => {
+    if (!companyId) return;
     const currentYear = new Date().getFullYear();
     if (resetPolicy.lastResetYear === currentYear) {
       alert(`Balances have already been reset for ${currentYear}. The reset can only be run once per year.`);
@@ -173,11 +185,11 @@ function TimeOffSettings() {
 
     setIsResetting(true);
     try {
-      const employeesSnapshot = await getDocs(collection(db, 'employees'));
+      const employeesSnapshot = await getDocs(collection(db, 'companies', companyId, 'employees'));
       const batch = writeBatch(db);
 
       employeesSnapshot.forEach(employeeDoc => {
-        const employeeRef = doc(db, 'employees', employeeDoc.id);
+        const employeeRef = doc(db, 'companies', companyId, 'employees', employeeDoc.id);
         const updateData = {};
         if (resetPolicy.resetVacation) updateData.vacationBalance = Number(resetPolicy.vacationMax);
         if (resetPolicy.resetSick) updateData.sickBalance = Number(resetPolicy.sickMax);
@@ -188,7 +200,7 @@ function TimeOffSettings() {
         }
       });
 
-      const policyRef = doc(db, 'companyPolicies', 'timeOff');
+      const policyRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
       batch.set(policyRef, { resetPolicy: { ...resetPolicy, lastResetYear: currentYear } }, { merge: true });
 
       await batch.commit();
