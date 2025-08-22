@@ -79,10 +79,7 @@ function App() {
           <Route path="payroll/run/:runId" element={<RunPayroll />} />
           <Route path="payroll/records/:runId" element={<PayrollDetails />} />
           <Route path="time-off" element={<TimeOff />} />
-          <Route path="performance" element={<Performance />} />
-          <Route path="performance/templates/:templateId" element={<TemplateEditor />} />
-          <Route path="performance/reviews/:reviewId" element={<TakeReview />} />
-          <Route path="performance/reviews/:reviewId/summary" element={<ReviewSummary />} />
+          {/* Performance routes are now removed */}
           <Route path="surveys" element={<Surveys />} />
           <Route path="surveys/create" element={<SurveyStudioWrapper />} />
           <Route path="surveys/edit/:surveyId" element={<SurveyStudioWrapper />} /> 
