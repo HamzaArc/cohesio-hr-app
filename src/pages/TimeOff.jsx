@@ -165,7 +165,17 @@ function TimeOff() {
 
   return (
     <>
-      <RequestTimeOffModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onrequestSubmitted={handleRequestSubmitted} currentUserProfile={currentUserProfile} myRequests={allRequests} weekends={weekends} holidays={holidays} allRequests={requestsWithNameAndDept} myTeam={myTeam} />
+      <RequestTimeOffModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        onrequestSubmitted={handleRequestSubmitted} 
+        currentUserProfile={currentUserProfile} 
+        myRequests={allRequests} 
+        weekends={weekends} 
+        holidays={holidays} 
+        allRequests={requestsWithNameAndDept} 
+        myTeam={myTeam} 
+      />
       <RequestDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} request={selectedRequest} onWithdraw={handleWithdrawRequest} onReschedule={handleRescheduleClick} />
       <RescheduleModal isOpen={isRescheduleModalOpen} onClose={() => setIsRescheduleModalOpen(false)} request={selectedRequest} onRescheduled={() => setSelectedRequest(null)} />
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={`request from ${selectedRequest?.startDate}`} loading={isDeleting} />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, writeBatch, increment, query, where, getDocs } from 'firebase/firestore';
-import { X, AlertCircle, Users, ArrowRight } from 'lucide-react';
+import { X, AlertCircle, Users, ArrowRight, Info } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 
 // --- Helper Functions ---
@@ -52,7 +52,7 @@ function calculateBusinessDays(startDate, endDate, weekends, holidays) {
 
 // --- Main Component ---
 function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserProfile, myRequests, weekends, holidays, allRequests, myTeam }) {
-  const { companyId, currentUser } = useAppContext();
+  const { employees, companyId, currentUser } = useAppContext();
   const [leaveType, setLeaveType] = useState('Vacation');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -61,6 +61,11 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestedDates, setSuggestedDates] = useState(null);
+
+  const manager = useMemo(() => {
+    if (!currentUserProfile || !employees) return null;
+    return employees.find(e => e.email === currentUserProfile.managerEmail);
+  }, [currentUserProfile, employees]);
   
   const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance' };
 
@@ -135,9 +140,13 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
 
       const batch = writeBatch(db);
       const newRequestRef = doc(requestsRef);
+      
+      const status = manager ? 'Pending' : 'Approved';
+
       batch.set(newRequestRef, { 
         leaveType, startDate, endDate, description, totalDays,
-        status: 'Pending', requestedAt: serverTimestamp(), userEmail: currentUser.email,
+        status: status, 
+        requestedAt: serverTimestamp(), userEmail: currentUser.email,
       });
       if (leaveType !== 'Personal (Unpaid)') {
         const employeeRef = doc(db, 'companies', companyId, 'employees', currentUserProfile.id);
@@ -231,6 +240,24 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                   {leaveType !== 'Personal (Unpaid)' ? (currentUserProfile?.[balanceFieldMap[leaveType]] ?? 0) - totalDays : 'N/A'} days
                 </p>
               </div>
+            </div>
+
+            <div className="md:col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center">
+                    <Info size={20} className="text-blue-700 mr-3"/>
+                    <div>
+                        <h3 className="font-semibold text-blue-800 text-sm">Approval Information</h3>
+                        {manager ? (
+                            <p className="text-xs text-blue-700 mt-1">
+                                This request will be sent to <strong>{manager.name}</strong> for approval.
+                            </p>
+                        ) : (
+                            <p className="text-xs text-blue-700 mt-1">
+                                Since you do not have a manager assigned, this request will be <strong>automatically approved</strong>.
+                            </p>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {teamAvailability.length > 0 && (
