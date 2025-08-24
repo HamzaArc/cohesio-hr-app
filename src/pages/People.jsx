@@ -9,17 +9,17 @@ import EditEmployeeModal from '../components/EditEmployeeModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import OrgChart from '../components/OrgChart';
 import StatCard from '../components/StatCard';
-import InviteEmployeeModal from '../components/InviteEmployeeModal'; // Import the new modal
+import InviteEmployeeModal from '../components/InviteEmployeeModal';
 
 const PeopleTab = ({ label, icon, active, onClick }) => ( <button onClick={onClick} className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{icon}{label}</button> );
 
 function People() {
-  const { employees: allEmployees, loading, companyId } = useAppContext();
+  const { employees: allEmployees, loading, companyId, currentUser } = useAppContext();
   const [activeTab, setActiveTab] = useState('Directory');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false); // State for the new modal
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +63,7 @@ function People() {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     
     if (activeTab === 'Org Chart') {
-        return <OrgChart employees={allEmployees} />;
+        return <OrgChart employees={allEmployees} currentUser={currentUser} />;
     }
 
     return (
@@ -95,10 +95,13 @@ function People() {
                     </thead>
                     <tbody>
                         {filteredEmployees.map(emp => (
-                            <tr key={emp.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <tr key={emp.id} className={`border-b border-gray-100 hover:bg-gray-50 ${emp.email === currentUser?.email ? 'bg-blue-50' : ''}`}>
                                 <td className="p-4 flex items-center">
                                     <img src={`https://placehold.co/40x40/E2E8F0/4A5568?text=${emp.name.charAt(0)}`} alt={emp.name} className="w-10 h-10 rounded-full mr-4" />
-                                    <Link to={`/people/${emp.id}`} className="font-semibold text-gray-800 hover:text-blue-600">{emp.name}</Link>
+                                    <div>
+                                      <Link to={`/people/${emp.id}`} className="font-semibold text-gray-800 hover:text-blue-600">{emp.name}</Link>
+                                      {emp.email === currentUser?.email && <span className="text-xs font-bold text-blue-600 ml-2">(You)</span>}
+                                    </div>
                                 </td>
                                 <td className="p-4 text-gray-700">{emp.position}</td>
                                 <td className="p-4 text-gray-700">{emp.email}</td>

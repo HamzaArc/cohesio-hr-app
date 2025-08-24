@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, BookOpen, Edit, Trash, Check, Library, Clock, Users, Eye, CheckCircle, X, Edit2 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, getDocs, updateDoc } from 'firebase/firestore';
@@ -208,26 +208,63 @@ function Training() {
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('My Training');
+  const participantListeners = useRef(new Map());
+
 
   useEffect(() => {
     if (!companyId) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
     const q = query(collection(db, 'companies', companyId, 'training'), orderBy('created', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      const programsList = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
-        const programData = { id: docSnapshot.id, ...docSnapshot.data() };
-        const participantsCollection = collection(db, 'companies', companyId, 'training', docSnapshot.id, 'participants');
-        const participantsSnapshot = await getDocs(participantsCollection);
-        programData.participants = participantsSnapshot.docs.map(p => ({ id: p.id, ...p.data() }));
-        return programData;
+  
+    const unsubscribePrograms = onSnapshot(q, (programsSnapshot) => {
+      const programsFromSnapshot = programsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
       }));
-      setAllPrograms(programsList);
+  
+      setAllPrograms(currentPrograms => {
+        const currentProgramsMap = new Map(currentPrograms.map(p => [p.id, p]));
+        return programsFromSnapshot.map(p => ({
+          ...p,
+          participants: currentProgramsMap.get(p.id)?.participants || [],
+        }));
+      });
+  
+      const currentProgramIds = new Set(programsFromSnapshot.map(p => p.id));
+      
+      for (const [programId, unsub] of participantListeners.current.entries()) {
+        if (!currentProgramIds.has(programId)) {
+          unsub();
+          participantListeners.current.delete(programId);
+        }
+      }
+  
+      for (const program of programsFromSnapshot) {
+        if (!participantListeners.current.has(program.id)) {
+          const participantsQuery = query(collection(db, 'companies', companyId, 'training', program.id, 'participants'));
+          const unsub = onSnapshot(participantsQuery, (participantsSnapshot) => {
+            const participants = participantsSnapshot.docs.map(p => ({ id: p.id, ...p.data() }));
+            setAllPrograms(currentPrograms => 
+              currentPrograms.map(p => 
+                p.id === program.id ? { ...p, participants } : p
+              )
+            );
+          });
+          participantListeners.current.set(program.id, unsub);
+        }
+      }
       setLoading(false);
     });
-    return () => unsubscribe();
+  
+    return () => {
+      unsubscribePrograms();
+      for (const unsub of participantListeners.current.values()) {
+        unsub();
+      }
+      participantListeners.current.clear();
+    };
   }, [companyId]);
 
   const { myPrograms, stats } = useMemo(() => {

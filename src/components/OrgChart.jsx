@@ -2,8 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 // A reusable component for each employee card in the chart
-const EmployeeCard = ({ employee }) => (
-  <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200 min-w-[160px]">
+const EmployeeCard = ({ employee, isCurrentUser }) => (
+  <div className={`flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border ${isCurrentUser ? 'border-blue-500 border-2' : 'border-gray-200'} min-w-[160px]`}>
     <img
       src={`https://placehold.co/64x64/E2E8F0/4A5568?text=${employee.name.charAt(0)}`}
       alt={employee.name}
@@ -11,14 +11,15 @@ const EmployeeCard = ({ employee }) => (
     />
     <Link to={`/people/${employee.id}`} className="font-bold text-gray-800 text-center hover:text-blue-600">{employee.name}</Link>
     <p className="text-xs text-gray-500 text-center">{employee.position}</p>
+    {isCurrentUser && <span className="text-xs font-bold text-blue-600 mt-1">(You)</span>}
   </div>
 );
 
 // A recursive component to render a manager and their direct reports
-const TreeNode = ({ node }) => {
+const TreeNode = ({ node, currentUser }) => {
     return (
         <div className="flex flex-col items-center">
-            <EmployeeCard employee={node} />
+            <EmployeeCard employee={node} isCurrentUser={node.email === currentUser?.email} />
             {node.children && node.children.length > 0 && (
                 <>
                     <div className="w-px h-8 bg-gray-300"></div>
@@ -27,7 +28,7 @@ const TreeNode = ({ node }) => {
                         {node.children.map(child => (
                             <div key={child.id} className="px-4 relative">
                                 <div className="absolute top-0 left-1/2 w-px h-8 bg-gray-300 -translate-x-1/2"></div>
-                                <TreeNode node={child} />
+                                <TreeNode node={child} currentUser={currentUser} />
                             </div>
                         ))}
                     </div>
@@ -37,7 +38,7 @@ const TreeNode = ({ node }) => {
     );
 };
 
-function OrgChart({ employees }) {
+function OrgChart({ employees, currentUser }) {
   // --- NEW: A much more robust, two-pass algorithm for building the tree ---
   const buildTree = () => {
     const nodes = {};
@@ -78,7 +79,7 @@ function OrgChart({ employees }) {
     <div className="p-8 bg-gray-50 rounded-b-lg overflow-x-auto">
       <div className="flex justify-center items-start gap-8">
         {tree.map(rootNode => (
-          <TreeNode key={rootNode.id} node={rootNode} />
+          <TreeNode key={rootNode.id} node={rootNode} currentUser={currentUser} />
         ))}
       </div>
     </div>
