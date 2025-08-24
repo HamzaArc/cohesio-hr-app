@@ -9,8 +9,8 @@ const navItems = [
   { path: '/people', label: 'People', icon: <Users size={20} /> },
   { path: '/payroll', label: 'Payroll', icon: <DollarSign size={20} /> },
   { path: '/time-off', label: 'Time Off', icon: <Calendar size={20} /> },
-  { path: '/time-clock', label: 'Time Clock', icon: <Clock size={20} /> },
-  { path: '/performance', label: 'Performance', icon: <Award size={20} /> },
+  { path: '/time-clock', label: 'Time Clock', icon: <Clock size={20} />, isBeta: true },
+  { path: '/performance', label: 'Performance', icon: <Award size={20} />, isBeta: true },
   { path: '/documents', label: 'Documents', icon: <FileText size={20} /> },
   { path: '/training', label: 'Training', icon: <BookOpen size={20} /> },
   { path: '/surveys', label: 'Surveys', icon: <MessageSquare size={20} /> },
@@ -19,14 +19,19 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
 ];
 
-const NavLink = ({ to, children, icon }) => {
+const NavLink = ({ to, children, icon, isBeta }) => {
   const location = useLocation();
   const isActive = location.pathname === to || (location.pathname.startsWith(to) && to !== '/dashboard');
 
   return (
     <Link to={to} className={`flex items-center p-2.5 my-1 rounded-lg text-sm font-medium transition-all duration-200 ${ isActive ? 'bg-gradient-to-r from-blue-50 to-sky-100 text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }`}>
       <div className={`mr-3 ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>{icon}</div>
-      {children}
+      <span>{children}</span>
+      {isBeta && (
+        <span className="ml-auto text-xs font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+          Beta
+        </span>
+      )}
     </Link>
   );
 };
@@ -36,7 +41,7 @@ function Sidebar() {
     <div className="w-64 bg-white text-white flex flex-col p-4 border-r border-gray-200">
       <nav className="flex-1 mt-4">
         {navItems.map(item => (
-            <NavLink key={item.path} to={item.path} icon={item.icon}>{item.label}</NavLink>
+            <NavLink key={item.path} to={item.path} icon={item.icon} isBeta={item.isBeta}>{item.label}</NavLink>
         ))}
       </nav>
       <div className="mt-auto">

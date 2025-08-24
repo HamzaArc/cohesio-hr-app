@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { Target, Calendar as CalIcon, Plus, TrendingUp, MessageSquare, FileText, Award, Clock, Flag, User } from "lucide-react";
+import { Target, Calendar as CalIcon, Plus, TrendingUp, MessageSquare, FileText, Award, Clock, Flag, User, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
@@ -9,7 +9,7 @@ import { ObjectivesTab } from './performance-components/ObjectivesTab.jsx';
 import { DevPlanTab } from './performance-components/DevPlanTab.jsx';
 import { OneOnOnesTab } from './performance-components/OneOnOnesTab.jsx';
 import { ReviewTab } from './performance-components/ReviewTab.jsx';
-import { ObjectiveModal, DevActionModal, OneOnOneModal } from './performance-components/Modals.jsx';
+import { ObjectiveModal, DevActionModal, OneOnOneModal, Button } from './performance-components/Modals.jsx';
 import { daysBetween, pct, weightedProgress, sixMonthsFrom } from './performance-components/helpers.jsx';
 
 // --- Main Page Component ---
@@ -95,7 +95,6 @@ export default function PerformanceCycle() {
           objectives: carryForwardObjectives,
           devPlan: [],
           oneOnOnes: [],
-          progressHistory: [{ date: serverTimestamp(), progress: 0 }],
           review: null,
       };
       
@@ -104,7 +103,9 @@ export default function PerformanceCycle() {
           await updateDoc(oldCycleRef, { status: 'completed' });
       }
 
-      await addDoc(collection(db, 'companies', companyId, 'performanceCycles'), newCycle);
+      const newCycleRef = await addDoc(collection(db, 'companies', companyId, 'performanceCycles'), newCycle);
+      const progressHistoryRef = collection(db, 'companies', companyId, 'performanceCycles', newCycleRef.id, 'progressHistory');
+      await addDoc(progressHistoryRef, { date: serverTimestamp(), progress: 0 });
   };
 
   if (loading) {

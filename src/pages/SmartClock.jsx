@@ -176,7 +176,7 @@ export default function SmartClock() {
                     <div className="flex items-center gap-2 flex-wrap">
                       {online ? <StatusPill ok label="Online" icon={Wifi} /> : <StatusPill ok={false} label="Offline (Queued)" icon={WifiOff} warn />}
                       <div className="flex items-center gap-1 group relative">
-                        {coords ? <StatusPill ok={geo.ok} label={geo.ok ? "At Site" : `Outside • ${Math.round(geo.distance)}m`} icon={MapPin} /> : <StatusPill ok={false} label={loadingPos ? "Locating…" : "No Location"} icon={Navigation} warn />}
+                        {coords ? <StatusPill ok={geo.ok} label={geo.ok ? "At Site" : `Outside • ${Math.round(geo.distance)}m`} icon={MapPin} /> : <StatusPill ok={false} label={loadingPos ? "Locating…" : "No Location"} icon={MapPin} warn />}
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-800 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                             <h4 className="font-bold">Geofencing Active</h4>
                             <p>For punch accuracy, your location is checked against the designated work site radius of {SETTINGS.geofence.radiusM}m.</p>
