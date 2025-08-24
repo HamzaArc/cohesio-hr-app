@@ -21,8 +21,8 @@ import TakeReview from './pages/TakeReview';
 import ReviewSummary from './pages/ReviewSummary';
 import Surveys from './pages/Surveys';
 import SurveyStudio from './pages/SurveyStudio';
-import TakeSurvey from './pages/TakeSurvey'; // Import new page
-import SurveyResults from './pages/SurveyResults'; // Import new page
+import TakeSurvey from './pages/TakeSurvey';
+import SurveyResults from './pages/SurveyResults';
 import Documents from './pages/Documents';
 import Training from './pages/Training';
 import Reporting from './pages/Reporting';
@@ -36,6 +36,7 @@ import Careers from './pages/Careers';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import AcceptInvite from './pages/AcceptInvite'; // Import the new page
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -58,7 +59,7 @@ function App() {
   const PublicRoute = ({ children }) => {
     return currentUser ? <Navigate to="/dashboard" /> : children;
   };
-  
+
   const SurveyStudioWrapper = () => {
     const location = useLocation();
     return <SurveyStudio key={location.pathname} />;
@@ -82,20 +83,21 @@ function App() {
           {/* Performance routes are now removed */}
           <Route path="surveys" element={<Surveys />} />
           <Route path="surveys/create" element={<SurveyStudioWrapper />} />
-          <Route path="surveys/edit/:surveyId" element={<SurveyStudioWrapper />} /> 
+          <Route path="surveys/edit/:surveyId" element={<SurveyStudioWrapper />} />
           <Route path="surveys/take/:surveyId" element={<TakeSurvey />} />
-          <Route path="surveys/results/:surveyId" element={<SurveyResults />} /> 
+          <Route path="surveys/results/:surveyId" element={<SurveyResults />} />
           <Route path="documents" element={<Documents />} />
           <Route path="training" element={<Training />} />
           <Route path="reporting" element={<Reporting />} />
           <Route path="company" element={<Company />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-        
+
         {/* Public Routes */}
         <Route path="/landing" element={<PublicRoute><LandingPage /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
+        <Route path="/accept-invite/:token" element={<PublicRoute><AcceptInvite /></PublicRoute>} />
         <Route path="/features" element={<PublicRoute><Features /></PublicRoute>} />
         <Route path="/pricing" element={<PublicRoute><Pricing /></PublicRoute>} />
         <Route path="/integrations" element={<PublicRoute><Integrations /></PublicRoute>} />
