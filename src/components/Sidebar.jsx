@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, User, Users, DollarSign, Clock, Calendar, FileText, BookOpen, MessageSquare, BarChart2, Building, Settings, LogOut } from 'lucide-react';
+import { Home, User, Users, DollarSign, Clock, Calendar, FileText, BookOpen, MessageSquare, BarChart2, Building, Settings, LogOut, Award } from 'lucide-react';
 import { auth } from '../firebase';
 
 const navItems = [
@@ -9,10 +9,11 @@ const navItems = [
   { path: '/people', label: 'People', icon: <Users size={20} /> },
   { path: '/payroll', label: 'Payroll', icon: <DollarSign size={20} /> },
   { path: '/time-off', label: 'Time Off', icon: <Calendar size={20} /> },
+  { path: '/time-clock', label: 'Time Clock', icon: <Clock size={20} /> },
+  { path: '/performance', label: 'Performance', icon: <Award size={20} /> },
   { path: '/documents', label: 'Documents', icon: <FileText size={20} /> },
   { path: '/training', label: 'Training', icon: <BookOpen size={20} /> },
   { path: '/surveys', label: 'Surveys', icon: <MessageSquare size={20} /> },
-  // { path: '/performance', label: 'Performance', icon: <BarChart2 size={20} /> }, // This line is now removed
   { path: '/reporting', label: 'Reporting', icon: <BarChart2 size={20} /> },
   { path: '/company', label: 'Company', icon: <Building size={20} /> },
   { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
@@ -20,7 +21,6 @@ const navItems = [
 
 const NavLink = ({ to, children, icon }) => {
   const location = useLocation();
-  // Updated logic to handle nested routes
   const isActive = location.pathname === to || (location.pathname.startsWith(to) && to !== '/dashboard');
 
   return (

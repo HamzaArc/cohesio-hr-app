@@ -15,10 +15,6 @@ import Payroll from './pages/Payroll';
 import RunPayroll from './pages/RunPayroll';
 import PayrollDetails from './pages/PayrollDetails';
 import TimeOff from './pages/TimeOff';
-import Performance from './pages/Performance';
-import TemplateEditor from './pages/TemplateEditor';
-import TakeReview from './pages/TakeReview';
-import ReviewSummary from './pages/ReviewSummary';
 import Surveys from './pages/Surveys';
 import SurveyStudio from './pages/SurveyStudio';
 import TakeSurvey from './pages/TakeSurvey';
@@ -36,7 +32,9 @@ import Careers from './pages/Careers';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
-import AcceptInvite from './pages/AcceptInvite'; // Import the new page
+import AcceptInvite from './pages/AcceptInvite';
+import SmartClock from './pages/SmartClock';
+import PerformanceCycle from './pages/PerformanceCycle'; // Import the new Performance page
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -80,7 +78,8 @@ function App() {
           <Route path="payroll/run/:runId" element={<RunPayroll />} />
           <Route path="payroll/records/:runId" element={<PayrollDetails />} />
           <Route path="time-off" element={<TimeOff />} />
-          {/* Performance routes are now removed */}
+          <Route path="time-clock" element={<SmartClock />} />
+          <Route path="performance" element={<PerformanceCycle />} />
           <Route path="surveys" element={<Surveys />} />
           <Route path="surveys/create" element={<SurveyStudioWrapper />} />
           <Route path="surveys/edit/:surveyId" element={<SurveyStudioWrapper />} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, BookOpen, Edit, Trash, Check, Library, Clock, Users, Eye, CheckCircle, X, Edit2 } from 'lucide-react';
+import { Plus, BookOpen, Edit, Trash, Check, Library, Clock, Users, Eye, CheckCircle, X, Edit2, Briefcase } from 'lucide-react'; // Added Briefcase icon
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
@@ -7,6 +7,7 @@ import AddTrainingModal from '../components/AddTrainingModal';
 import EditTrainingModal from '../components/EditTrainingModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import StatCard from '../components/StatCard';
+import JobDescription from '../components/JobDescription'; // Import the new component
 
 // Moved TrainingDetailsModal into this file to have everything in one place
 function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
@@ -186,7 +187,7 @@ function TrainingDetailsModal({ isOpen, onClose, program, employees }) {
 }
 
 
-const TrainingTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
+const TrainingTab = ({ label, active, onClick, icon }) => ( <button onClick={onClick} className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{icon}{label}</button> );
 
 const categoryColors = {
   "Onboarding": "bg-blue-50 text-blue-600",
@@ -343,6 +344,10 @@ function Training() {
   const renderContent = () => {
     if (loading) return <div className="p-8 text-center">Loading programs...</div>;
     
+    if (activeTab === 'Job Description') {
+      return <JobDescription />;
+    }
+
     const programsToDisplay = activeTab === 'My Training' ? myPrograms : allPrograms;
 
     return programsToDisplay.length === 0 ? (
@@ -382,8 +387,9 @@ function Training() {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="border-b border-gray-200 px-2 flex">
-                <TrainingTab label="My Training" active={activeTab === 'My Training'} onClick={() => setActiveTab('My Training')} />
-                <TrainingTab label="Admin View" active={activeTab === 'Admin View'} onClick={() => setActiveTab('Admin View')} />
+                <TrainingTab label="My Training" active={activeTab === 'My Training'} onClick={() => setActiveTab('My Training')} icon={<BookOpen size={16} />} />
+                <TrainingTab label="Admin View" active={activeTab === 'Admin View'} onClick={() => setActiveTab('Admin View')} icon={<Users size={16} />} />
+                <TrainingTab label="Job Description" active={activeTab === 'Job Description'} onClick={() => setActiveTab('Job Description')} icon={<Briefcase size={16} />} />
             </div>
             {renderContent()}
         </div>
