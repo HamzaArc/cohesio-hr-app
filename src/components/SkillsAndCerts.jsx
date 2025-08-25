@@ -45,14 +45,15 @@ function SkillsAndCerts({ employeeId }) {
   
   const isExpired = (dateStr) => {
       if (!dateStr) return false;
-      return new Date(dateStr) < new Date();
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return new Date(dateStr) < today;
   }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Skills & Certifications</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Skills, Certifications & Compliance</h3>
         
-        {/* Item List */}
         <div className="space-y-3">
             {items.map(item => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-gray-50 border">
@@ -77,26 +78,29 @@ function SkillsAndCerts({ employeeId }) {
              {items.length === 0 && !loading && <p className="text-center text-gray-500 py-4">No skills or certifications have been added.</p>}
         </div>
 
-        {/* Add Item Form */}
         <form onSubmit={handleAddItem} className="mt-4 pt-4 border-t">
+             <label className="block text-sm font-semibold text-gray-700 mb-2">Add New Item</label>
             <div className="flex flex-col md:flex-row gap-2">
                 <select value={newItemType} onChange={e => setNewItemType(e.target.value)} className="border border-gray-300 rounded-md shadow-sm p-2 text-sm">
                     <option>Skill</option>
                     <option>Certification</option>
+                    <option>Language</option>
+                    <option>Authorization</option>
                 </select>
                 <input
                     type="text"
                     value={newItemText}
                     onChange={e => setNewItemText(e.target.value)}
-                    placeholder={newItemType === 'Skill' ? 'e.g., Public Speaking' : 'e.g., Project Management Professional (PMP)'}
+                    placeholder={newItemType === 'Skill' ? 'e.g., Public Speaking' : 'e.g., PMP Certification'}
                     className="flex-grow border border-gray-300 rounded-md shadow-sm p-2 text-sm"
                 />
-                {newItemType === 'Certification' && (
+                {(newItemType === 'Certification' || newItemType === 'Authorization') && (
                     <input
                         type="date"
                         value={expiryDate}
                         onChange={e => setExpiryDate(e.target.value)}
                         className="border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                        title="Expiry Date"
                     />
                 )}
                 <button type="submit" className="bg-blue-600 text-white font-semibold p-2 rounded-lg hover:bg-blue-700">

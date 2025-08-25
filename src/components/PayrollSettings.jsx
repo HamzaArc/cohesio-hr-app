@@ -25,7 +25,7 @@ function PayrollSettings() {
       const docRef = doc(db, 'companies', companyId, 'policies', 'payroll');
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setSettings(docSnap.data());
+        setSettings(prev => ({ ...prev, ...docSnap.data() }));
       }
       setLoading(false);
     };
