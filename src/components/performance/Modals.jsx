@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useAppContext } from '../../contexts/AppContext';
+import { db } from '../../firebase';
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 
 // --- Reusable UI Atoms ---
 const Field = ({ label, children }) => (
@@ -27,6 +29,121 @@ const Modal = ({ title, onClose, children, footer }) => (
   </div>
 );
 
+// --- Create Performance Cycle Modal ---
+export const CreatePerformanceCycleModal = ({ isOpen, onClose }) => {
+    const { employees, companyId } = useAppContext();
+    const [selectedEmployee, setSelectedEmployee] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    const handleCreate = async () => {
+        const employee = employees.find(e => e.id === selectedEmployee);
+        const manager = employees.find(e => e.email === employee.managerEmail);
+
+        if (!employee || !manager) {
+            alert('Selected employee must have a manager.');
+            return;
+        }
+
+        // --- FIX: Corrected collection path and added companyId ---
+        await addDoc(collection(db, 'performanceCycles'), {
+            companyId: companyId, // Add companyId for proper querying
+            employeeId: employee.id,
+            managerId: manager.id,
+            participants: [{ id: employee.id, name: employee.name }, { id: manager.id, name: manager.name }],
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            status: 'active',
+            objectives: [],
+            devPlan: [],
+            oneOnOnes: [],
+            review: null,
+            createdAt: serverTimestamp(),
+        });
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal title="New Performance Cycle" onClose={onClose} footer={[
+            <Button key="cancel" onClick={onClose}>Cancel</Button>,
+            <Button key="save" primary onClick={handleCreate}>Create Cycle</Button>,
+        ]}>
+            <Field label="Employee">
+                <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)} className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select an employee</option>
+                    {employees.filter(e => e.managerEmail).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+                <Field label="Start Date"><TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></Field>
+                <Field label="End Date"><TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></Field>
+            </div>
+        </Modal>
+    );
+};
+
+// --- Edit Performance Cycle Modal ---
+export const EditPerformanceCycleModal = ({ isOpen, onClose, cycle }) => {
+    const [cycleData, setCycleData] = useState(cycle);
+
+    useEffect(() => { setCycleData(cycle); }, [cycle]);
+
+    const handleSave = async () => {
+        // --- FIX: Corrected document path ---
+        const cycleRef = doc(db, 'performanceCycles', cycle.id);
+        await updateDoc(cycleRef, {
+            ...cycleData
+        });
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal title="Edit Performance Cycle" onClose={onClose} footer={[
+            <Button key="cancel" onClick={onClose}>Cancel</Button>,
+            <Button key="save" primary onClick={handleSave}>Save Changes</Button>,
+        ]}>
+            <div className="grid grid-cols-2 gap-4">
+                <Field label="Start Date"><TextInput type="date" value={cycleData.startDate.toDate().toISOString().split('T')[0]} onChange={(e) => setCycleData({ ...cycleData, startDate: new Date(e.target.value) })} /></Field>
+                <Field label="End Date"><TextInput type="date" value={cycleData.endDate.toDate().toISOString().split('T')[0]} onChange={(e) => setCycleData({ ...cycleData, endDate: new Date(e.target.value) })} /></Field>
+            </div>
+        </Modal>
+    );
+};
+
+
+// --- Reschedule Performance Cycle Modal ---
+export const ReschedulePerformanceCycleModal = ({ isOpen, onClose, cycle }) => {
+    const [newEndDate, setNewEndDate] = useState('');
+
+
+    const handleReschedule = async () => {
+        // --- FIX: Corrected document path ---
+        const cycleRef = doc(db, 'performanceCycles', cycle.id);
+        await updateDoc(cycleRef, {
+            endDate: new Date(newEndDate),
+        });
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal title="Reschedule Performance Cycle" onClose={onClose} footer={[
+            <Button key="cancel" onClick={onClose}>Cancel</Button>,
+            <Button key="save" primary onClick={handleReschedule}>Reschedule</Button>,
+        ]}>
+            <Field label="New End Date">
+                <TextInput type="date" value={newEndDate} onChange={(e) => setNewEndDate(e.target.value)} />
+            </Field>
+        </Modal>
+    );
+};
+
+
 // --- Objective Modal ---
 export const ObjectiveModal = ({ isOpen, onClose, data, cycle, onSave }) => {
     const [objective, setObjective] = useState(data);
@@ -37,7 +154,7 @@ export const ObjectiveModal = ({ isOpen, onClose, data, cycle, onSave }) => {
     const handleSave = () => {
         const objectives = cycle.objectives || [];
         const exists = objectives.findIndex(o => o.id === objective.id) !== -1;
-        const newObjectives = exists 
+        const newObjectives = exists
             ? objectives.map(o => o.id === objective.id ? objective : o)
             : [...objectives, objective];
         onSave({ objectives: newObjectives });

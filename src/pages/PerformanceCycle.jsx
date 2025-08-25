@@ -1,55 +1,55 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { Target, Calendar as CalIcon, Plus, TrendingUp, MessageSquare, FileText, Award, Clock, Flag, User, AlertTriangle } from "lucide-react";
+import { useParams, Link } from "react-router-dom"; // Import Link
+import { Target, Calendar as CalIcon, Plus, TrendingUp, MessageSquare, FileText, Award, Clock, Flag, User, AlertTriangle, ArrowLeft } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 
-import { ObjectivesTab } from './performance-components/ObjectivesTab.jsx';
-import { DevPlanTab } from './performance-components/DevPlanTab.jsx';
-import { OneOnOnesTab } from './performance-components/OneOnOnesTab.jsx';
-import { ReviewTab } from './performance-components/ReviewTab.jsx';
-import { ObjectiveModal, DevActionModal, OneOnOneModal, Button } from './performance-components/Modals.jsx';
-import { daysBetween, pct, weightedProgress, sixMonthsFrom } from './performance-components/helpers.jsx';
+import { ObjectivesTab } from '../components/performance/ObjectivesTab.jsx';
+import { DevPlanTab } from '../components/performance/DevPlanTab.jsx';
+import { OneOnOnesTab } from '../components/performance/OneOnOnesTab.jsx';
+import { ReviewTab } from '../components/performance/ReviewTab.jsx';
+import { ObjectiveModal, DevActionModal, OneOnOneModal, Button } from '../components/performance/Modals.jsx';
+import { daysBetween, pct, weightedProgress, sixMonthsFrom } from '../components/performance/helpers.jsx';
 
 // --- Main Page Component ---
 export default function PerformanceCycle() {
+  const { cycleId } = useParams();
   const { companyId, currentUser, employees } = useAppContext();
   const [cycle, setCycle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("overview");
   const [modal, setModal] = useState({ type: null, data: null });
 
-  const currentUserEmployee = useMemo(() => 
+  const currentUserEmployee = useMemo(() =>
     employees.find(e => e.email === currentUser?.email),
   [employees, currentUser]);
 
   // --- Data Fetching ---
   useEffect(() => {
-    if (!companyId || !currentUserEmployee) return;
+    if (!companyId || !cycleId) return;
 
-    const cyclesRef = collection(db, 'companies', companyId, 'performanceCycles');
-    const q = query(cyclesRef, where('employeeId', '==', currentUserEmployee.id), where('status', '==', 'active'), limit(1));
+    const cycleRef = doc(db, 'performanceCycles', cycleId);
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        setCycle(null);
+    const unsubscribe = onSnapshot(cycleRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setCycle({ id: docSnap.id, ...docSnap.data() });
       } else {
-        const doc = snapshot.docs[0];
-        setCycle({ id: doc.id, ...doc.data() });
+        setCycle(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [companyId, currentUserEmployee]);
+  }, [companyId, cycleId]);
 
   // --- Derived State & KPIs ---
   const { cycleDays, daysElapsed, timelinePct, kpi } = useMemo(() => {
     if (!cycle) return { cycleDays: 0, daysElapsed: 0, timelinePct: 0, kpi: {} };
     
-    const start = cycle.start.toDate();
-    const end = cycle.end.toDate();
+    const start = cycle.startDate.toDate();
+    const end = cycle.endDate.toDate();
     const cDays = daysBetween(start, end);
     const dElapsed = Math.max(0, Math.min(cDays, daysBetween(start, new Date())));
     const tPct = Math.round((dElapsed / (cDays || 1)) * 100);
@@ -72,14 +72,14 @@ export default function PerformanceCycle() {
   // --- CRUD Operations ---
   const updateCycle = useCallback(async (updatedData) => {
     if (!cycle) return;
-    const cycleRef = doc(db, 'companies', companyId, 'performanceCycles', cycle.id);
+    const cycleRef = doc(db, 'performanceCycles', cycle.id);
     await updateDoc(cycleRef, updatedData);
-  }, [cycle, companyId]);
+  }, [cycle]);
 
   const startNewCycle = async (carryForwardObjectives = []) => {
       if (!companyId || !currentUserEmployee) return;
       const manager = employees.find(e => e.email === currentUserEmployee.managerEmail);
-      const newStart = cycle ? cycle.end.toDate() : new Date();
+      const newStart = cycle ? cycle.endDate.toDate() : new Date();
       const newEnd = sixMonthsFrom(newStart);
 
       const newCycle = {
@@ -99,12 +99,12 @@ export default function PerformanceCycle() {
       };
       
       if (cycle) { // Mark old cycle as complete
-          const oldCycleRef = doc(db, 'companies', companyId, 'performanceCycles', cycle.id);
+          const oldCycleRef = doc(db, 'performanceCycles', cycle.id);
           await updateDoc(oldCycleRef, { status: 'completed' });
       }
 
-      const newCycleRef = await addDoc(collection(db, 'companies', companyId, 'performanceCycles'), newCycle);
-      const progressHistoryRef = collection(db, 'companies', companyId, 'performanceCycles', newCycleRef.id, 'progressHistory');
+      const newCycleRef = await addDoc(collection(db, 'performanceCycles'), newCycle);
+      const progressHistoryRef = collection(db, 'performanceCycles', newCycleRef.id, 'progressHistory');
       await addDoc(progressHistoryRef, { date: serverTimestamp(), progress: 0 });
   };
 
@@ -126,6 +126,10 @@ export default function PerformanceCycle() {
     <>
       <div className="p-8 bg-gray-50 min-h-full">
         <header className="mb-8">
+            {/* --- ADDED THIS LINK --- */}
+            <Link to="/performance" className="text-sm text-blue-600 font-semibold hover:underline mb-2 flex items-center gap-2">
+                <ArrowLeft size={16}/> Back to Performance Hub
+            </Link>
             <h1 className="text-3xl font-bold text-gray-800">Performance & Development</h1>
             <p className="text-gray-600">6-month cycle for {currentUserEmployee?.name}</p>
         </header>
@@ -161,7 +165,7 @@ export default function PerformanceCycle() {
 
 // --- Sub-components for Overview and Sidebar ---
 const Overview = ({ kpi, cycle, timelinePct }) => {
-    const daysElapsed = Math.max(0, Math.min(daysBetween(cycle.start.toDate(), cycle.end.toDate()), daysBetween(cycle.start.toDate(), new Date())));
+    const daysElapsed = Math.max(0, Math.min(daysBetween(cycle.startDate.toDate(), cycle.endDate.toDate()), daysBetween(cycle.startDate.toDate(), new Date())));
 
     return (
         <div className="space-y-6">
@@ -169,9 +173,9 @@ const Overview = ({ kpi, cycle, timelinePct }) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <div className="text-sm text-gray-500 font-medium">Current Cycle Timeline</div>
-                        <div className="font-bold text-lg">{cycle.start.toDate().toLocaleDateString()} → {cycle.end.toDate().toLocaleDateString()}</div>
+                        <div className="font-bold text-lg">{cycle.startDate.toDate().toLocaleDateString()} → {cycle.endDate.toDate().toLocaleDateString()}</div>
                     </div>
-                    <div className="text-sm font-medium">{daysElapsed} / {daysBetween(cycle.start.toDate(), cycle.end.toDate())} days</div>
+                    <div className="text-sm font-medium">{daysElapsed} / {daysBetween(cycle.startDate.toDate(), cycle.endDate.toDate())} days</div>
                 </div>
                 <div className="mt-3 h-3 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-blue-600" style={{ width: pct(timelinePct) }} /></div>
             </div>
@@ -207,9 +211,9 @@ const Sidebar = ({ cycle }) => (
         <div className="rounded-2xl border bg-white p-4 shadow-sm">
             <div className="text-sm font-medium text-gray-500 mb-2">Key Dates</div>
             <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2"><Flag size={16} className="text-gray-400" /> Start: {cycle.start.toDate().toLocaleDateString()}</li>
+                <li className="flex items-center gap-2"><Flag size={16} className="text-gray-400" /> Start: {cycle.startDate.toDate().toLocaleDateString()}</li>
                 <li className="flex items-center gap-2"><Clock size={16} className="text-gray-400" /> Today: {new Date().toLocaleDateString()}</li>
-                <li className="flex items-center gap-2"><CalIcon size={16} className="text-gray-400" /> End: {cycle.end.toDate().toLocaleDateString()}</li>
+                <li className="flex items-center gap-2"><CalIcon size={16} className="text-gray-400" /> End: {cycle.endDate.toDate().toLocaleDateString()}</li>
             </ul>
         </div>
     </div>

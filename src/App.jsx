@@ -34,7 +34,8 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import AcceptInvite from './pages/AcceptInvite';
 import SmartClock from './pages/SmartClock';
-import PerformanceCycle from './pages/PerformanceCycle'; // Import the new Performance page
+import Performance from './pages/Performance'; // Import the new Performance page
+import PerformanceCycle from './pages/PerformanceCycle';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -79,7 +80,8 @@ function App() {
           <Route path="payroll/records/:runId" element={<PayrollDetails />} />
           <Route path="time-off" element={<TimeOff />} />
           <Route path="time-clock" element={<SmartClock />} />
-          <Route path="performance" element={<PerformanceCycle />} />
+          <Route path="performance" element={<Performance />} />
+          <Route path="performance/:cycleId" element={<PerformanceCycle />} />
           <Route path="surveys" element={<Surveys />} />
           <Route path="surveys/create" element={<SurveyStudioWrapper />} />
           <Route path="surveys/edit/:surveyId" element={<SurveyStudioWrapper />} />
