@@ -1,57 +1,106 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, collection, getDocs } from 'firebase/firestore';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Briefcase, User, Shield } from 'lucide-react';
 import DatalistInput from './DatalistInput';
 import { useAppContext } from '../contexts/AppContext';
 
-const ValidatedInput = ({ id, label, value, onChange, error, ...props }) => (
-    <div>
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}</label>
-        <input id={id} value={value} onChange={onChange} className={`mt-1 block w-full border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500`} {...props} />
-        {error && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertCircle size={14} className="mr-1"/>{error}</p>}
+// Reusable Input Component for text, email, date, etc.
+const ValidatedInput = ({ id, label, value, onChange, error, type = 'text', hint, required, ...props }) => (
+    <div className="relative">
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500">*</span>}</label>
+        <input
+            id={id}
+            value={value || ''}
+            onChange={onChange}
+            type={type}
+            className={`block w-full border ${error ? 'border-red-500 pr-10' : 'border-gray-300'} ${value && !error ? 'pr-10' : ''} rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500 transition-colors`}
+            {...props}
+        />
+        {value && !error && <CheckCircle size={16} className="absolute right-3 top-10 text-green-500" />}
+        {error && <AlertCircle size={16} className="absolute right-3 top-10 text-red-500" />}
+        {hint && !error && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
 );
 
-const TabButton = ({ active, onClick, children }) => (
-    <button type="button" onClick={onClick} className={`px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 ${active ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-        {children}
-    </button>
+// A new component for consistent select/dropdown styling.
+const ValidatedSelect = ({ id, label, value, onChange, error, hint, required, children, ...props }) => (
+    <div className="relative">
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500">*</span>}</label>
+        <select
+            id={id}
+            value={value || ''}
+            onChange={onChange}
+            className={`block w-full border ${error ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none pr-10`}
+            {...props}
+        >
+            {children}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700" style={{ top: '1.85rem' }}>
+             <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+        </div>
+        {value && !error && <CheckCircle size={16} className="absolute right-10 top-10 text-green-500 pointer-events-none" />}
+        {error && <AlertCircle size={16} className="absolute right-10 top-10 text-red-500 pointer-events-none" />}
+        {hint && !error && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
 );
+
+
+// Reusable Progress Tracker from AddEmployeeModal
+const ProgressTracker = ({ currentStep, steps }) => (
+    <div className="flex items-center justify-center mb-8">
+        {steps.map((step, index) => (
+            <React.Fragment key={step.id}>
+                <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${index + 1 <= currentStep ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}>
+                        {step.icon}
+                    </div>
+                    <p className={`mt-2 text-xs text-center font-semibold ${index + 1 <= currentStep ? 'text-blue-600' : 'text-gray-500'}`}>{step.name}</p>
+                </div>
+                {index < steps.length - 1 && (
+                    <div className={`flex-1 h-1 mx-2 transition-colors duration-300 ${index + 1 < currentStep ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                )}
+            </React.Fragment>
+        ))}
+    </div>
+);
+
 
 function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
   const { companyId } = useAppContext();
-  const [activeTab, setActiveTab] = useState('job');
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
   const [allEmployees, setAllEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const steps = [
+    { id: 1, name: 'Job & Pay', icon: <Briefcase size={20} /> },
+    { id: 2, name: 'Personal', icon: <User size={20} /> },
+    { id: 3, name: 'Legal (Morocco)', icon: <Shield size={20} /> },
+  ];
+
   useEffect(() => {
     if (employee) {
       setFormData({
-        // Job & Pay
         name: employee.name || '', email: employee.email || '', position: employee.position || '',
         department: employee.department || '', hireDate: employee.hireDate || '', status: employee.status || 'active',
-        employmentType: employee.employmentType || 'Full-time', compensation: employee.compensation || '',
-        managerEmail: employee.managerEmail || '', contractType: employee.contractType || 'CDI',
-        contractEndDate: employee.contractEndDate || '', weeklyHours: employee.weeklyHours || '',
-        workMode: employee.workMode || 'on-site', monthlyGrossSalary: employee.monthlyGrossSalary || '',
-        hourlyRate: employee.hourlyRate || '',
-        // Personal & Contact
+        employmentType: employee.employmentType || 'Full-time', managerEmail: employee.managerEmail || '',
+        contractType: employee.contractType || 'CDI', contractEndDate: employee.contractEndDate || '',
+        weeklyHours: employee.weeklyHours || '', workMode: employee.workMode || 'on-site',
+        monthlyGrossSalary: employee.monthlyGrossSalary || '', hourlyRate: employee.hourlyRate || '',
         phone: employee.phone || '', address: employee.address || '', dateOfBirth: employee.dateOfBirth || '',
         nationality: employee.nationality || '', maritalStatus: employee.maritalStatus || 'Single',
         personalEmail: employee.personalEmail || '',
-        // Emergency Contact
         emergencyContactName: employee.emergencyContactName || '', emergencyContactRelationship: employee.emergencyContactRelationship || '',
         emergencyContactPhone: employee.emergencyContactPhone || '',
-        // Legal (Morocco)
         nationalId: employee.nationalId || '', cnieExpiryDate: employee.cnieExpiryDate || '',
         cnssNumber: employee.cnssNumber || '', cnssEnrollmentDate: employee.cnssEnrollmentDate || '',
         amoScheme: employee.amoScheme || '', cimrEnrollment: employee.cimrEnrollment || false,
         cimrRate: employee.cimrRate || '', rib: employee.rib || '', bankBranch: employee.bankBranch || '',
-        // Time Off
         vacationBalance: employee.vacationBalance ?? 15, sickBalance: employee.sickBalance ?? 5, personalBalance: employee.personalBalance ?? 3,
       });
       setErrors({});
@@ -68,43 +117,50 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
     }
   }, [isOpen, employee, companyId]);
 
-  const validate = (data = formData) => {
-      const newErrors = {};
-      if (!data.name) newErrors.name = 'Full name is required.';
-      if (!data.email) newErrors.email = 'Email is required.';
-      else if (!/\S+@\S+\.\S+/.test(data.email)) newErrors.email = 'Email address is invalid.';
-      if (!data.position) newErrors.position = 'Position is required.';
-      if (!data.hireDate) newErrors.hireDate = 'Hire date is required.';
-      if (data.phone && !/^[0-9\s+()-]*$/.test(data.phone)) newErrors.phone = 'Invalid phone number format.';
-      setErrors(newErrors);
-      return Object.keys(newErrors).length === 0;
+  const validateStep = () => {
+    const newErrors = {};
+    if (step === 1) {
+      if (!formData.name) newErrors.name = 'Full name is required.';
+      if (!formData.email) newErrors.email = 'Email is required.';
+      else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email address is invalid.';
+      if (!formData.position) newErrors.position = 'Position is required.';
+      if (!formData.hireDate) newErrors.hireDate = 'Hire date is required.';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e) => {
     const { id, value, type, checked } = e.target;
-    const newFormData = { ...formData, [id]: type === 'checkbox' ? checked : value };
-    setFormData(newFormData);
-    validate(newFormData);
+    setFormData(prev => ({ ...prev, [id]: type === 'checkbox' ? checked : value }));
   };
+
+  const handleNext = () => {
+    if (validateStep()) {
+      setStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => setStep(prev => prev - 1);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate() || !companyId) return;
+    if (!validateStep() || !companyId) return;
     setLoading(true);
 
     try {
       const employeeRef = doc(db, 'companies', companyId, 'employees', employee.id);
       await updateDoc(employeeRef, {
         ...formData,
-        monthlyGrossSalary: Number(formData.monthlyGrossSalary) || 0,
-        hourlyRate: Number(formData.hourlyRate) || 0,
-        cimrRate: Number(formData.cimrRate) || 0,
+        monthlyGrossSalary: Number(formData.monthlyGrossSalary) || null,
+        hourlyRate: Number(formData.hourlyRate) || null,
+        cimrRate: Number(formData.cimrRate) || null,
         vacationBalance: Number(formData.vacationBalance) || 0,
         sickBalance: Number(formData.sickBalance) || 0,
         personalBalance: Number(formData.personalBalance) || 0,
       });
       onEmployeeUpdated();
-      onClose();
+      handleClose();
     } catch (err) {
       setErrors({ form: 'Failed to update employee. Please try again.' });
       console.error(err);
@@ -112,59 +168,85 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
       setLoading(false);
     }
   };
-  
+
+  const handleClose = () => {
+    setFormData({});
+    setErrors({});
+    setStep(1);
+    onClose();
+  };
+
   if (!isOpen || !employee) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-6 border-b"><h2 className="text-2xl font-bold text-gray-800">Edit Employee</h2><button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><X size={24} /></button></div>
-        <div className="border-b border-gray-200 px-6">
-            <nav className="-mb-px flex space-x-6">
-                <TabButton active={activeTab === 'job'} onClick={() => setActiveTab('job')}>Job & Pay</TabButton>
-                <TabButton active={activeTab === 'personal'} onClick={() => setActiveTab('personal')}>Personal</TabButton>
-                <TabButton active={activeTab === 'legal'} onClick={() => setActiveTab('legal')}>Legal (Morocco)</TabButton>
-            </nav>
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-6 border-b"><h2 className="text-2xl font-bold text-gray-800">Edit Employee</h2><button onClick={handleClose} className="p-1 rounded-full hover:bg-gray-200"><X size={24} /></button></div>
+        <div className="p-6">
+            <ProgressTracker currentStep={step} steps={steps} />
         </div>
-        <form onSubmit={handleSubmit} className="overflow-y-auto p-6" noValidate>
-            {activeTab === 'job' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+        <form onSubmit={handleSubmit} className="overflow-y-auto p-6 pt-0" noValidate>
+            {step === 1 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2">Core Information</h3>
-                    <ValidatedInput id="name" label="Full Name" value={formData.name} onChange={handleChange} error={errors.name} required />
-                    <ValidatedInput id="email" label="Work Email" value={formData.email} onChange={handleChange} error={errors.email} type="email" required />
+                    <ValidatedInput id="name" label="Full Name" value={formData.name} onChange={handleChange} error={errors.name} required hint="As it should appear on official documents." />
+                    <ValidatedInput id="email" label="Work Email" value={formData.email} onChange={handleChange} error={errors.email} type="email" required hint="This will be their login and primary contact."/>
                     <ValidatedInput id="position" label="Position / Title" value={formData.position} onChange={handleChange} error={errors.position} required />
                     
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Employment Details</h3>
                     <ValidatedInput id="hireDate" label="Hire Date" value={formData.hireDate} onChange={handleChange} error={errors.hireDate} type="date" required />
                     <DatalistInput id="department" label="Department" value={formData.department} onChange={handleChange} options={departments} placeholder="Select or type new"/>
-                    <div><label htmlFor="managerEmail" className="block text-sm font-medium">Reports To</label><select id="managerEmail" value={formData.managerEmail} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2"><option value="">No Manager</option>{allEmployees.map(emp => <option key={emp.id} value={emp.email}>{emp.name}</option>)}</select></div>
-                    <div><label htmlFor="status" className="block text-sm font-medium">Status</label><select id="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2"><option value="active">Active</option><option value="onboarding">Onboarding</option></select></div>
-                    <div><label htmlFor="employmentType" className="block text-sm font-medium">Employment Type</label><select id="employmentType" value={formData.employmentType} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2"><option>Full-time</option><option>Part-time</option><option>Contractor</option></select></div>
-                    <div><label htmlFor="contractType" className="block text-sm font-medium">Contract Type</label><select id="contractType" value={formData.contractType} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2"><option>CDI</option><option>CDD</option><option>Internship</option><option>Apprenticeship</option></select></div>
+                    <ValidatedSelect id="managerEmail" label="Reports To" value={formData.managerEmail} onChange={handleChange}>
+                        <option value="">No Manager</option>
+                        {allEmployees.map(emp => <option key={emp.id} value={emp.email}>{emp.name}</option>)}
+                    </ValidatedSelect>
+                    <ValidatedSelect id="status" label="Status" value={formData.status} onChange={handleChange}>
+                        <option value="active">Active</option>
+                        <option value="onboarding">Onboarding</option>
+                    </ValidatedSelect>
+                    <ValidatedSelect id="employmentType" label="Employment Type" value={formData.employmentType} onChange={handleChange}>
+                        <option>Full-time</option>
+                        <option>Part-time</option>
+                        <option>Contractor</option>
+                    </ValidatedSelect>
+                    <ValidatedSelect id="contractType" label="Contract Type" value={formData.contractType} onChange={handleChange}>
+                        <option>CDI</option>
+                        <option>CDD</option>
+                        <option>Internship</option>
+                        <option>Apprenticeship</option>
+                    </ValidatedSelect>
                     {formData.contractType === 'CDD' && <ValidatedInput id="contractEndDate" label="Contract End Date" value={formData.contractEndDate} onChange={handleChange} type="date" />}
                     <ValidatedInput id="weeklyHours" label="Weekly Hours" value={formData.weeklyHours} onChange={handleChange} type="number" />
-                    <div><label htmlFor="workMode" className="block text-sm font-medium">Work Mode</label><select id="workMode" value={formData.workMode} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2"><option>On-site</option><option>Hybrid</option><option>Remote</option></select></div>
+                    <ValidatedSelect id="workMode" label="Work Mode" value={formData.workMode} onChange={handleChange}>
+                        <option>On-site</option>
+                        <option>Hybrid</option>
+                        <option>Remote</option>
+                    </ValidatedSelect>
 
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Compensation</h3>
-                    <ValidatedInput id="monthlyGrossSalary" label="Monthly Gross Salary (MAD)" value={formData.monthlyGrossSalary} onChange={handleChange} type="number" step="0.01" />
-                    <ValidatedInput id="hourlyRate" label="Hourly Rate (MAD)" value={formData.hourlyRate} onChange={handleChange} type="number" step="0.01" />
-                    <ValidatedInput id="compensation" label="Legacy Compensation Field" value={formData.compensation} onChange={handleChange} placeholder="e.g., 50000 / year" />
-                    
+                    <ValidatedInput id="monthlyGrossSalary" label="Monthly Gross Salary (MAD)" value={formData.monthlyGrossSalary} onChange={handleChange} type="number" step="0.01" hint="For salaried employees." />
+                    <ValidatedInput id="hourlyRate" label="Hourly Rate (MAD)" value={formData.hourlyRate} onChange={handleChange} type="number" step="0.01" hint="For hourly employees." />
+
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Time Off Balances (Days)</h3>
                     <ValidatedInput id="vacationBalance" label="Vacation" value={formData.vacationBalance} onChange={handleChange} type="number" />
                     <ValidatedInput id="sickBalance" label="Sick" value={formData.sickBalance} onChange={handleChange} type="number" />
                     <ValidatedInput id="personalBalance" label="Personal" value={formData.personalBalance} onChange={handleChange} type="number" />
                 </div>
             )}
-            {activeTab === 'personal' && (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            {step === 2 && (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                     <h3 className="md:col-span-2 text-lg font-semibold text-gray-700 border-b pb-2">Personal Details</h3>
                     <ValidatedInput id="dateOfBirth" label="Date of Birth" value={formData.dateOfBirth} onChange={handleChange} type="date" />
                     <ValidatedInput id="nationality" label="Nationality" value={formData.nationality} onChange={handleChange} />
                     <ValidatedInput id="phone" label="Phone (Work)" value={formData.phone} onChange={handleChange} error={errors.phone} type="tel" />
                     <ValidatedInput id="personalEmail" label="Personal Email" value={formData.personalEmail} onChange={handleChange} type="email" />
-                    <div><label htmlFor="maritalStatus" className="block text-sm font-medium">Marital Status</label><select id="maritalStatus" value={formData.maritalStatus} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2"><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option></select></div>
-                    <ValidatedInput id="address" label="Address" value={formData.address} onChange={handleChange} className="md:col-span-2"/>
+                    <ValidatedSelect id="maritalStatus" label="Marital Status" value={formData.maritalStatus} onChange={handleChange}>
+                        <option>Single</option>
+                        <option>Married</option>
+                        <option>Divorced</option>
+                        <option>Widowed</option>
+                    </ValidatedSelect>
+                    <div className="md:col-span-2"><ValidatedInput id="address" label="Address" value={formData.address} onChange={handleChange} /></div>
 
                     <h3 className="md:col-span-2 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Emergency Contact</h3>
                     <ValidatedInput id="emergencyContactName" label="Contact Name" value={formData.emergencyContactName} onChange={handleChange} />
@@ -172,8 +254,8 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <ValidatedInput id="emergencyContactPhone" label="Contact Phone" value={formData.emergencyContactPhone} onChange={handleChange} type="tel" />
                  </div>
             )}
-            {activeTab === 'legal' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+            {step === 3 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2">Identification</h3>
                     <ValidatedInput id="nationalId" label="National ID (CNIE)" value={formData.nationalId} onChange={handleChange} />
                     <ValidatedInput id="cnieExpiryDate" label="CNIE Expiry Date" value={formData.cnieExpiryDate} onChange={handleChange} type="date" />
@@ -181,7 +263,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Social Security</h3>
                     <ValidatedInput id="cnssNumber" label="CNSS Number" value={formData.cnssNumber} onChange={handleChange} />
                     <ValidatedInput id="cnssEnrollmentDate" label="CNSS Enrollment Date" value={formData.cnssEnrollmentDate} onChange={handleChange} type="date" />
-                    <div><label htmlFor="amoScheme" className="block text-sm font-medium">AMO Scheme</label><input id="amoScheme" value={formData.amoScheme} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md p-2" /></div>
+                    <ValidatedInput id="amoScheme" label="AMO Scheme" value={formData.amoScheme} onChange={handleChange} />
                     
                     <div className="md:col-span-3 flex items-center gap-4 mt-2">
                         <input type="checkbox" id="cimrEnrollment" checked={formData.cimrEnrollment} onChange={handleChange} className="h-4 w-4 rounded" />
@@ -194,10 +276,15 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <ValidatedInput id="bankBranch" label="Bank Branch" value={formData.bankBranch} onChange={handleChange} />
                 </div>
             )}
-          {errors.form && <p className="text-red-500 text-sm mt-4 text-center">{errors.form}</p>}
-          <div className="mt-8 pt-6 border-t flex justify-end">
-            <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-300">Cancel</button>
-            <button type="submit" disabled={loading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">{loading ? 'Saving...' : 'Save Changes'}</button>
+          <div className="mt-8 pt-6 border-t flex justify-between items-center">
+            <div>
+                {step > 1 && <button type="button" onClick={handleBack} className="bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-300">Back</button>}
+            </div>
+            <div>
+                {errors.form && <p className="text-red-500 text-sm text-center">{errors.form}</p>}
+                {step < steps.length && <button type="button" onClick={handleNext} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700">Next</button>}
+                {step === steps.length && <button type="submit" disabled={loading} className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 disabled:bg-gray-400">{loading ? 'Saving...' : 'Save Changes'}</button>}
+            </div>
           </div>
         </form>
       </div>
