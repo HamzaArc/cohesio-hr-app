@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Eye, Calendar as CalendarIcon, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Eye, Calendar as CalendarIcon, CheckCircle, Clock, Download } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, getDocs, where } from 'firebase/firestore';
+// FIX: Added 'doc' to the import statement
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, getDocs, where, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../contexts/AppContext';
 import PayrollSettings from '../components/PayrollSettings';
 import RunSpecificMonthModal from '../components/RunSpecificMonthModal';
+import { generateCnssXml } from '../utils/xmlGenerator';
 
 const PayrollTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
 
 function Payroll() {
-  const { companyId } = useAppContext();
+  const { companyId, employees } = useAppContext();
   const [activeTab, setActiveTab] = useState('Run Payroll');
   const [payrollRuns, setPayrollRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSpecificMonthModalOpen, setIsSpecificMonthModalOpen] = useState(false);
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState(null);
 
   useEffect(() => {
     if (!companyId) {
@@ -30,7 +33,18 @@ function Payroll() {
         setPayrollRuns(runs);
         setLoading(false);
     });
-    return () => unsubscribe();
+
+    const settingsRef = doc(db, 'companies', companyId, 'policies', 'payroll');
+    const unsubscribeSettings = onSnapshot(settingsRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setCompanyInfo(docSnap.data());
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeSettings();
+    };
   }, [companyId]);
 
   const nextPayrollPeriod = useMemo(() => {
@@ -44,7 +58,7 @@ function Payroll() {
           nextDate = new Date(Number(year), Number(month) - 1, 1);
           nextDate.setMonth(nextDate.getMonth() + 1);
       }
-      
+
       return {
           month: String(nextDate.getMonth() + 1).padStart(2, '0'),
           year: nextDate.getFullYear(),
@@ -57,11 +71,11 @@ function Payroll() {
     setIsCreating(true);
     const periodId = `${year}-${month}`;
     const periodLabel = `${new Date(year, month - 1).toLocaleString('default', { month: 'long' })} ${year}`;
-    
+
     const payrollRunsRef = collection(db, "companies", companyId, "payrollRuns");
     const q = query(payrollRunsRef, where("period", "==", periodId));
     const existingRun = await getDocs(q);
-    
+
     if (!existingRun.empty) {
         navigate(`/payroll/run/${existingRun.docs[0].id}`);
     } else {
@@ -86,10 +100,21 @@ function Payroll() {
         navigate(`/payroll/records/${run.id}`);
     }
   };
-  
+
+  const handleDownloadXml = (run) => {
+    const xmlString = generateCnssXml(run, employees, companyInfo);
+    const blob = new Blob([xmlString], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CNSS_${run.periodLabel.replace(' ', '_')}.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const renderContent = () => {
       if (loading) return <div className="p-4 text-center">Loading...</div>;
-      
+
       const isRunCreatedForNextPeriod = payrollRuns.some(run => run.period === `${nextPayrollPeriod.year}-${nextPayrollPeriod.month}`);
 
       switch(activeTab) {
@@ -105,12 +130,12 @@ function Payroll() {
                             <p className="text-sm text-gray-600">Finalize this month's payroll to generate payslips for your employees.</p>
                         </div>
                         <div className="flex gap-2">
-                            <button 
+                            <button
                                 onClick={() => setIsSpecificMonthModalOpen(true)}
                                 className="bg-white text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 border border-gray-300 flex items-center shadow-sm">
                                 <CalendarIcon size={16} className="mr-2"/> Run for a Specific Month
                             </button>
-                            <button 
+                            <button
                                 onClick={() => handleStartPayroll(nextPayrollPeriod.month, nextPayrollPeriod.year)}
                                 disabled={isCreating}
                                 className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm disabled:bg-blue-400"
@@ -121,7 +146,7 @@ function Payroll() {
                     </div>
                     <div className="p-6">
                         <h3 className="font-bold text-lg text-gray-700 mb-4">Payroll History</h3>
-                        {payrollRuns.length === 0 ? ( <p className="text-center text-gray-500 py-8">No previous payroll runs found.</p> ) 
+                        {payrollRuns.length === 0 ? ( <p className="text-center text-gray-500 py-8">No previous payroll runs found.</p> )
                         : (
                             <table className="w-full text-left">
                                 <thead><tr className="border-b"><th className="p-4 font-semibold text-gray-500 text-sm">Period</th><th className="p-4 font-semibold text-gray-500 text-sm">Status</th><th className="p-4 font-semibold text-gray-500 text-sm">Finalized On</th><th className="p-4 font-semibold text-gray-500 text-sm">Total Pay</th><th className="p-4 font-semibold text-gray-500 text-sm">Actions</th></tr></thead>
@@ -141,6 +166,11 @@ function Payroll() {
                                                 <button onClick={() => handleActionClick(run)} className="p-2 hover:bg-gray-200 rounded-full">
                                                     <Eye size={16} className="text-gray-600" />
                                                 </button>
+                                                {run.status === 'Finalized' && (
+                                                  <button onClick={() => handleDownloadXml(run)} className="p-2 hover:bg-gray-200 rounded-full">
+                                                    <Download size={16} className="text-gray-600" />
+                                                  </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -155,9 +185,9 @@ function Payroll() {
 
   return (
     <>
-      <RunSpecificMonthModal 
-        isOpen={isSpecificMonthModalOpen} 
-        onClose={() => setIsSpecificMonthModalOpen(false)} 
+      <RunSpecificMonthModal
+        isOpen={isSpecificMonthModalOpen}
+        onClose={() => setIsSpecificMonthModalOpen(false)}
         onRun={handleStartPayroll}
         existingRuns={payrollRuns}
       />
