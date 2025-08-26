@@ -12,6 +12,19 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [toast, setToast] = useState({ message: '', type: '', visible: false });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => {
+      setToast({ message: '', type: '', visible: false });
+    }, 3000); // Auto-hide after 3 seconds
+  };
+  
+  const hideToast = () => {
+      setToast({ message: '', type: '', visible: false });
+  };
+
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -68,6 +81,9 @@ export const AppProvider = ({ children }) => {
     loading,
     companyId,
     currentUser,
+    toast,
+    showToast,
+    hideToast,
   };
 
   return (

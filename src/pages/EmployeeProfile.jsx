@@ -10,6 +10,9 @@ import AddJourneyEventModal from '../components/AddJourneyEventModal';
 import OnboardingPlan from '../components/OnboardingPlan';
 import SkillsAndCerts from '../components/SkillsAndCerts';
 import PrivateNotes from '../components/PrivateNotes';
+import PersonalDocumentsTab from '../components/PersonalDocumentsTab';
+import CompanyDocumentsTab from '../components/CompanyDocumentsTab';
+
 
 const ProfileTab = ({ label, active, onClick }) => (
   <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors ${active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -104,6 +107,24 @@ function EmployeeProfile() {
                   <InfoSection title="Contact Information" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<Phone size={16} />} label="Phone (Work)" value={employee.phone} /><InfoField icon={<Home size={16} />} label="Address" value={employee.address} /><InfoField icon={<Mail size={16} />} label="Personal Email" value={employee.personalEmail} /></InfoSection>
                   <InfoSection title="Personal Details" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<Calendar size={16} />} label="Date of Birth" value={employee.dateOfBirth} /><InfoField icon={<Users size={16} />} label="Marital Status" value={employee.maritalStatus} /><InfoField icon={<Flag size={16} />} label="Nationality" value={employee.nationality} /></InfoSection>
                   <InfoSection title="Emergency Contact" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<User size={16} />} label="Contact Name" value={employee.emergencyContactName} /><InfoField icon={<Shield size={16} />} label="Relationship" value={employee.emergencyContactRelationship} /><InfoField icon={<Phone size={16} />} label="Contact Phone" value={employee.emergencyContactPhone} /></InfoSection>
+                   <InfoSection title="Family Information" onEdit={() => setIsEditModalOpen(true)}>
+                        <div className="md:col-span-3">
+                            <h4 className="text-sm font-bold text-gray-600 mb-2">Children ({employee.kids?.length || 0})</h4>
+                            {employee.kids && employee.kids.length > 0 ? (
+                                <ul className="list-disc list-inside">
+                                    {employee.kids.map((kid, index) => <li key={index}>{kid.name} (Age: {kid.age})</li>)}
+                                </ul>
+                            ) : <p className="text-sm text-gray-500">No children listed.</p>}
+                        </div>
+                        <div className="md:col-span-3">
+                            <h4 className="text-sm font-bold text-gray-600 mb-2 mt-4">Parents ({employee.parents?.length || 0})</h4>
+                            {employee.parents && employee.parents.length > 0 ? (
+                                <ul className="list-disc list-inside">
+                                    {employee.parents.map((parent, index) => <li key={index}>{parent.name} (Age: {parent.age})</li>)}
+                                </ul>
+                            ) : <p className="text-sm text-gray-500">No parents listed.</p>}
+                        </div>
+                    </InfoSection>
                 </div>
               )}
                {activeTab === 'Legal & Identity' && (

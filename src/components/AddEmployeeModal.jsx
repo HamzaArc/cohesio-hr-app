@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, getDocs } from 'firebase/firestore';
-import { X, AlertCircle, CheckCircle, Briefcase, User, Shield } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Briefcase, User, Shield, Plus, Trash2 } from 'lucide-react';
 import DatalistInput from './DatalistInput';
 import { useAppContext } from '../contexts/AppContext';
 
@@ -47,7 +47,6 @@ const ValidatedSelect = ({ id, label, value, onChange, error, hint, required, ch
     </div>
 );
 
-
 // Progress tracker component to guide the user.
 const ProgressTracker = ({ currentStep, steps }) => (
     <div className="flex items-center justify-center mb-8">
@@ -67,7 +66,6 @@ const ProgressTracker = ({ currentStep, steps }) => (
     </div>
 );
 
-
 function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
   const { companyId } = useAppContext();
   const [step, setStep] = useState(1);
@@ -81,6 +79,7 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
     nationalId: '', cnieExpiryDate: '', cnssNumber: '', cnssEnrollmentDate: '', amoScheme: '',
     cimrEnrollment: false, cimrRate: '', rib: '', bankBranch: '',
     vacationBalance: 15, sickBalance: 5, personalBalance: 3,
+    kids: [], parents: [],
   });
   const [errors, setErrors] = useState({});
   const [allEmployees, setAllEmployees] = useState([]);
@@ -124,6 +123,23 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
     const { id, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [id]: type === 'checkbox' ? checked : value }));
   };
+  
+    const handleFamilyChange = (type, index, field, value) => {
+    const updatedFamily = [...formData[type]];
+    updatedFamily[index][field] = value;
+    setFormData(prev => ({ ...prev, [type]: updatedFamily }));
+  };
+
+  const addFamilyMember = (type) => {
+    setFormData(prev => ({ ...prev, [type]: [...prev[type], { name: '', age: '' }] }));
+  };
+
+  const removeFamilyMember = (type, index) => {
+    const updatedFamily = [...formData[type]];
+    updatedFamily.splice(index, 1);
+    setFormData(prev => ({ ...prev, [type]: updatedFamily }));
+  };
+
 
   const handleNext = () => {
     if (validateStep()) {
@@ -159,7 +175,7 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
   };
 
   const handleClose = () => {
-    setFormData({ name: '', email: '', position: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'active', employmentType: 'Full-time', managerEmail: '', contractType: 'CDI', contractEndDate: '', weeklyHours: '40', workMode: 'on-site', monthlyGrossSalary: '', hourlyRate: '', phone: '', address: '', dateOfBirth: '', nationality: '', maritalStatus: 'Single', personalEmail: '', emergencyContactName: '', emergencyContactRelationship: '', emergencyContactPhone: '', nationalId: '', cnieExpiryDate: '', cnssNumber: '', cnssEnrollmentDate: '', amoScheme: '', cimrEnrollment: false, cimrRate: '', rib: '', bankBranch: '', vacationBalance: 15, sickBalance: 5, personalBalance: 3 });
+    setFormData({ name: '', email: '', position: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'active', employmentType: 'Full-time', managerEmail: '', contractType: 'CDI', contractEndDate: '', weeklyHours: '40', workMode: 'on-site', monthlyGrossSalary: '', hourlyRate: '', phone: '', address: '', dateOfBirth: '', nationality: '', maritalStatus: 'Single', personalEmail: '', emergencyContactName: '', emergencyContactRelationship: '', emergencyContactPhone: '', nationalId: '', cnieExpiryDate: '', cnssNumber: '', cnssEnrollmentDate: '', amoScheme: '', cimrEnrollment: false, cimrRate: '', rib: '', bankBranch: '', vacationBalance: 15, sickBalance: 5, personalBalance: 3, kids: [], parents: [] });
     setErrors({});
     setStep(1);
     onClose();
@@ -241,6 +257,34 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
                     <ValidatedInput id="emergencyContactName" label="Contact Name" value={formData.emergencyContactName} onChange={handleChange} />
                     <ValidatedInput id="emergencyContactRelationship" label="Relationship" value={formData.emergencyContactRelationship} onChange={handleChange} />
                     <ValidatedInput id="emergencyContactPhone" label="Contact Phone" value={formData.emergencyContactPhone} onChange={handleChange} type="tel" />
+                 
+                    <div className="md:col-span-2">
+                        <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Family Information</h3>
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Children</label>
+                        {formData.kids.map((kid, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
+                                <div className="col-span-6"><input type="text" placeholder="Child's Name" value={kid.name} onChange={(e) => handleFamilyChange('kids', index, 'name', e.target.value)} className="w-full p-2 border rounded-md" /></div>
+                                <div className="col-span-4"><input type="number" placeholder="Age" value={kid.age} onChange={(e) => handleFamilyChange('kids', index, 'age', e.target.value)} className="w-full p-2 border rounded-md" /></div>
+                                <div className="col-span-2"><button type="button" onClick={() => removeFamilyMember('kids', index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 size={16}/></button></div>
+                            </div>
+                        ))}
+                        <button type="button" onClick={() => addFamilyMember('kids')} className="text-sm font-semibold text-blue-600 flex items-center gap-1 hover:underline"><Plus size={16}/>Add Child</button>
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Parents</label>
+                         {formData.parents.map((parent, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
+                                <div className="col-span-6"><input type="text" placeholder="Parent's Name" value={parent.name} onChange={(e) => handleFamilyChange('parents', index, 'name', e.target.value)} className="w-full p-2 border rounded-md" /></div>
+                                <div className="col-span-4"><input type="number" placeholder="Age" value={parent.age} onChange={(e) => handleFamilyChange('parents', index, 'age', e.target.value)} className="w-full p-2 border rounded-md" /></div>
+                                <div className="col-span-2"><button type="button" onClick={() => removeFamilyMember('parents', index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 size={16}/></button></div>
+                            </div>
+                        ))}
+                        <button type="button" onClick={() => addFamilyMember('parents')} className="text-sm font-semibold text-blue-600 flex items-center gap-1 hover:underline"><Plus size={16}/>Add Parent</button>
+                    </div>
                  </div>
             )}
             {step === 3 && (

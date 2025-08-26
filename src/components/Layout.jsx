@@ -2,8 +2,12 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import Toast from './Toast'; // Import the Toast component
+import { useAppContext } from '../contexts/AppContext'; // Import the context
 
 function Layout() {
+  const { toast, hideToast } = useAppContext(); // Get toast state from context
+
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
       <Sidebar />
@@ -13,6 +17,13 @@ function Layout() {
           <Outlet />
         </main>
       </div>
+      {toast.visible && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 }

@@ -6,6 +6,8 @@ import EditEmployeeModal from '../components/EditEmployeeModal';
 import OnboardingPlan from '../components/OnboardingPlan';
 import SkillsAndCerts from '../components/SkillsAndCerts';
 import { useAppContext } from '../contexts/AppContext';
+import PersonalDocumentsTab from '../components/PersonalDocumentsTab';
+import CompanyDocumentsTab from '../components/CompanyDocumentsTab';
 
 const ProfileTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`} > {label} </button> );
 const InfoSection = ({ title, children, onEdit }) => ( <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-800">{title}</h3>{onEdit && <button onClick={onEdit} className="text-sm font-semibold text-blue-600 hover:underline">Edit</button>}</div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">{children}</div></div> );
@@ -51,7 +53,7 @@ function Profile() {
             </div>
           </div>
           <div className="w-full lg:w-3/4">
-              <div className="border-b border-gray-200 bg-white rounded-t-lg shadow-sm"><div className="flex items-center px-2 overflow-x-auto"><ProfileTab label="Job" active={activeTab === 'Job'} onClick={() => setActiveTab('Job')} /><ProfileTab label="Personal" active={activeTab === 'Personal'} onClick={() => setActiveTab('Personal')} /><ProfileTab label="Legal & Identity" active={activeTab === 'Legal & Identity'} onClick={() => setActiveTab('Legal & Identity')} /><ProfileTab label="Time Off" active={activeTab === 'Time Off'} onClick={() => setActiveTab('Time Off')} /><ProfileTab label="Onboarding" active={activeTab === 'Onboarding'} onClick={() => setActiveTab('Onboarding')} /><ProfileTab label="Skills" active={activeTab === 'Skills'} onClick={() => setActiveTab('Skills')} /></div></div>
+              <div className="border-b border-gray-200 bg-white rounded-t-lg shadow-sm"><div className="flex items-center px-2 overflow-x-auto"><ProfileTab label="Job" active={activeTab === 'Job'} onClick={() => setActiveTab('Job')} /><ProfileTab label="Personal" active={activeTab === 'Personal'} onClick={() => setActiveTab('Personal')} /><ProfileTab label="Legal & Identity" active={activeTab === 'Legal & Identity'} onClick={() => setActiveTab('Legal & Identity')} /><ProfileTab label="Time Off" active={activeTab === 'Time Off'} onClick={() => setActiveTab('Time Off')} /><ProfileTab label="My Documents" active={activeTab === 'My Documents'} onClick={() => setActiveTab('My Documents')} /><ProfileTab label="Download Work Documents" active={activeTab === 'Company Documents'} onClick={() => setActiveTab('Company Documents')} /><ProfileTab label="Onboarding" active={activeTab === 'Onboarding'} onClick={() => setActiveTab('Onboarding')} /><ProfileTab label="Skills" active={activeTab === 'Skills'} onClick={() => setActiveTab('Skills')} /></div></div>
               <div className="mt-6">
                   {activeTab === 'Job' && (
                     <div className="space-y-6">
@@ -64,6 +66,24 @@ function Profile() {
                         <InfoSection title="Contact Information" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<Phone size={16} />} label="Phone (Work)" value={employee.phone} /><InfoField icon={<Home size={16} />} label="Address" value={employee.address} /><InfoField icon={<Mail size={16} />} label="Personal Email" value={employee.personalEmail} /></InfoSection>
                         <InfoSection title="Personal Details" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<Calendar size={16} />} label="Date of Birth" value={employee.dateOfBirth} /><InfoField icon={<Users size={16} />} label="Marital Status" value={employee.maritalStatus} /><InfoField icon={<Flag size={16} />} label="Nationality" value={employee.nationality} /></InfoSection>
                         <InfoSection title="Emergency Contact" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<User size={16} />} label="Contact Name" value={employee.emergencyContactName} /><InfoField icon={<Shield size={16} />} label="Relationship" value={employee.emergencyContactRelationship} /><InfoField icon={<Phone size={16} />} label="Contact Phone" value={employee.emergencyContactPhone} /></InfoSection>
+                        <InfoSection title="Family Information" onEdit={() => setIsEditModalOpen(true)}>
+                            <div className="md:col-span-3">
+                                <h4 className="text-sm font-bold text-gray-600 mb-2">Children ({employee.kids?.length || 0})</h4>
+                                {employee.kids && employee.kids.length > 0 ? (
+                                    <ul className="list-disc list-inside">
+                                        {employee.kids.map((kid, index) => <li key={index}>{kid.name} (Age: {kid.age})</li>)}
+                                    </ul>
+                                ) : <p className="text-sm text-gray-500">No children listed.</p>}
+                            </div>
+                            <div className="md:col-span-3">
+                                <h4 className="text-sm font-bold text-gray-600 mb-2 mt-4">Parents ({employee.parents?.length || 0})</h4>
+                                {employee.parents && employee.parents.length > 0 ? (
+                                    <ul className="list-disc list-inside">
+                                        {employee.parents.map((parent, index) => <li key={index}>{parent.name} (Age: {parent.age})</li>)}
+                                    </ul>
+                                ) : <p className="text-sm text-gray-500">No parents listed.</p>}
+                            </div>
+                        </InfoSection>
                     </div>
                   )}
                   {activeTab === 'Legal & Identity' && (
@@ -74,6 +94,8 @@ function Profile() {
                     </div>
                   )}
                   {activeTab === 'Time Off' && (<div className="space-y-6"><InfoSection title="Time Off Balances" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<Plane size={16} />} label="Vacation" value={`${employee.vacationBalance} days`} /><InfoField icon={<Heart size={16} />} label="Sick Days" value={`${employee.sickBalance} days`} /><InfoField icon={<Sun size={16} />} label="Personal Days" value={`${employee.personalBalance} days`} /></InfoSection></div>)}
+                  {activeTab === 'My Documents' && <PersonalDocumentsTab employeeId={employee.id} />}
+                  {activeTab === 'Company Documents' && <CompanyDocumentsTab employee={employee} />}
                   {activeTab === 'Onboarding' && (<div><OnboardingPlan employeeId={employee.id} /></div>)}
                   {activeTab === 'Skills' && (<div><SkillsAndCerts employeeId={employee.id} /></div>)}
               </div>
