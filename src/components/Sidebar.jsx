@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, User, Users, DollarSign, Clock, Calendar, FileText, BookOpen, MessageSquare, BarChart2, Building, Settings, LogOut, Award } from 'lucide-react';
+import { Home, User, Users, DollarSign, Clock, Calendar, FileText, BookOpen, MessageSquare, BarChart2, Building, Settings, LogOut, Award, HeartPulse } from 'lucide-react';
 import { auth } from '../firebase';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/time-off', label: 'Time Off', icon: <Calendar size={20} /> },
   { path: '/time-clock', label: 'Time Clock', icon: <Clock size={20} />, isBeta: true },
   { path: '/performance', label: 'Performance', icon: <Award size={20} />, isBeta: true },
+  { path: '/medical-file', label: 'Medical File', icon: <HeartPulse size={20} />, isBeta: true },
   { path: '/documents', label: 'Documents', icon: <FileText size={20} /> },
   { path: '/training', label: 'Training', icon: <BookOpen size={20} /> },
   { path: '/surveys', label: 'Surveys', icon: <MessageSquare size={20} /> },

@@ -36,6 +36,7 @@ import AcceptInvite from './pages/AcceptInvite';
 import SmartClock from './pages/SmartClock';
 import Performance from './pages/Performance'; // Import the new Performance page
 import PerformanceCycle from './pages/PerformanceCycle';
+import MedicalFile from './pages/MedicalFile'; // Import the new Medical File page
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -92,6 +93,7 @@ function App() {
           <Route path="reporting" element={<Reporting />} />
           <Route path="company" element={<Company />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="medical-file" element={<MedicalFile />} />
         </Route>
 
         {/* Public Routes */}
