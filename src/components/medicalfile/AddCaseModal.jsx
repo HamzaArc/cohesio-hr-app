@@ -2,30 +2,35 @@ import React, { useState, useMemo } from 'react';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAppContext } from '../../contexts/AppContext';
-import { X, User, Calendar, FileText, StickyNote } from 'lucide-react';
-import { parseLinks } from './helpers.jsx';
+import { X, User, Calendar, FileText } from 'lucide-react';
+import useFileUpload from '../../hooks/useFileUpload';
 
 export default function AddCaseModal({ isOpen, onClose }) {
     const { companyId, employees } = useAppContext();
+    const { uploading, progress, error, uploadFile } = useFileUpload();
     const [form, setForm] = useState({
         employeeId: "",
         type: "Sickness",
         startDate: "",
         endDate: "",
-        docLinks: "",
+        files: [],
         notes: "",
     });
-    const [error, setError] = useState('');
+    const [formError, setFormError] = useState('');
 
     const selectedEmployee = useMemo(() => employees.find(e => e.id === form.employeeId), [employees, form.employeeId]);
     const canCreate = form.employeeId && form.startDate && form.endDate;
 
     const handleCreate = async () => {
         if (!canCreate || !companyId || !selectedEmployee) {
-            setError('Please select an employee and provide a valid date range.');
+            setFormError('Please select an employee and provide a valid date range.');
             return;
         }
-        setError('');
+        setFormError('');
+
+        const documentPromises = form.files.map(file => uploadFile(file, `medical-cases/${companyId}`));
+        const documentURLs = await Promise.all(documentPromises);
+        const documents = documentURLs.map((url, index) => ({ type: "Uploaded file", url, name: form.files[index].name }));
 
         const payload = {
             employee: {
@@ -37,7 +42,7 @@ export default function AddCaseModal({ isOpen, onClose }) {
             type: form.type,
             startDate: form.startDate,
             endDate: form.endDate,
-            documents: parseLinks(form.docLinks).map(u => ({ type: "External link", url: u })),
+            documents,
             notes: form.notes ? [{
                 text: form.notes,
                 author: "Initial Note",
@@ -55,8 +60,8 @@ export default function AddCaseModal({ isOpen, onClose }) {
     };
     
     const handleClose = () => {
-        setForm({ employeeId: "", type: "Sickness", startDate: "", endDate: "", docLinks: "", notes: "" });
-        setError('');
+        setForm({ employeeId: "", type: "Sickness", startDate: "", endDate: "", files: [], notes: "" });
+        setFormError('');
         onClose();
     }
 
@@ -120,8 +125,8 @@ export default function AddCaseModal({ isOpen, onClose }) {
                     <div className="p-4 border rounded-lg">
                         <h3 className="font-semibold text-gray-700 flex items-center gap-2 mb-4"><FileText size={18} /> Documents & Notes</h3>
                         <div>
-                            <label className="block text-sm font-medium">Document Links (Google Drive, etc.)</label>
-                            <textarea value={form.docLinks} onChange={e => setForm({ ...form, docLinks: e.target.value })} rows="3" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="One link per line..."></textarea>
+                            <label className="block text-sm font-medium">Documents</label>
+                            <input type="file" multiple onChange={e => setForm({ ...form, files: Array.from(e.target.files) })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                         </div>
                          <div className="mt-4">
                             <label className="block text-sm font-medium">Initial Note</label>
@@ -130,11 +135,13 @@ export default function AddCaseModal({ isOpen, onClose }) {
                     </div>
                 </div>
 
+                {formError && <p className="text-red-500 text-sm px-6 pb-4">{formError}</p>}
                 {error && <p className="text-red-500 text-sm px-6 pb-4">{error}</p>}
+                {uploading && <div className="px-6 pb-4"><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div></div><p className="text-sm text-center">Uploading... {Math.round(progress)}%</p></div>}
 
                 <div className="p-6 border-t flex justify-end gap-2">
                     <button type="button" onClick={handleClose} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
-                    <button type="button" onClick={handleCreate} disabled={!canCreate} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">Create Case</button>
+                    <button type="button" onClick={handleCreate} disabled={!canCreate || uploading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{uploading ? 'Uploading...' : 'Create Case'}</button>
                 </div>
             </div>
         </div>

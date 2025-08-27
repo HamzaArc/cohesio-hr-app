@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { X, Link, User, Users } from 'lucide-react';
+import { X, User, Users } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
+import useFileUpload from '../hooks/useFileUpload';
 
 const documentCategories = ["Policy", "Handbook", "Contract", "Form", "Training Material", "Other"];
 
 function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpdated }) {
   const { employees, companyId } = useAppContext();
   const [name, setName] = useState('');
-  const [fileURL, setFileURL] = useState('');
+  const [file, setFile] = useState(null);
   const [expirationDate, setExpirationDate] = useState('');
   const [category, setCategory] = useState('Policy');
   const [description, setDescription] = useState('');
   const [assignedEmails, setAssignedEmails] = useState([]);
   const [assignmentType, setAssignmentType] = useState('all');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { uploading, progress, error, uploadFile } = useFileUpload();
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     if (isOpen && docToEdit) {
         setName(docToEdit.name || '');
-        setFileURL(docToEdit.fileURL || '');
         setExpirationDate(docToEdit.expirationDate || '');
         setCategory(docToEdit.category || 'Policy');
         setDescription(docToEdit.description || '');
@@ -38,14 +38,17 @@ function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpd
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !fileURL || !companyId) {
-      setError('Please provide a name and a document link.');
+    if (!name || !companyId) {
+      setFormError('Please provide a document name.');
       return;
     }
-    setLoading(true);
-    setError('');
+    setFormError('');
 
     try {
+        let fileURL = docToEdit.fileURL;
+        if (file) {
+            fileURL = await uploadFile(file, `documents/${companyId}`);
+        }
         const docRef = doc(db, 'companies', companyId, 'documents', docToEdit.id);
         const currentAcks = docToEdit.acknowledgments || [];
         
@@ -77,10 +80,8 @@ function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpd
       onDocumentUpdated();
       onClose();
     } catch (err) {
-      setError('Failed to update document. Please try again.');
+      setFormError('Failed to update document. Please try again.');
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -100,7 +101,7 @@ function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpd
                 <div><label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label><select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"><option disabled>Select a category</option>{documentCategories.map(cat => <option key={cat}>{cat}</option>)}</select></div>
             </div>
             <div><label htmlFor="description" className="block text-sm font-medium text-gray-700">Description (Optional)</label><textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows="2" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea></div>
-            <div><label htmlFor="fileURL" className="block text-sm font-medium text-gray-700">Document Link</label><div className="relative mt-1"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Link className="h-5 w-5 text-gray-400" /></div><input type="url" id="fileURL" value={fileURL} onChange={(e) => setFileURL(e.target.value)} placeholder="https://..." className="block w-full pl-10 border border-gray-300 rounded-md shadow-sm p-2" /></div></div>
+            <div><label htmlFor="file" className="block text-sm font-medium text-gray-700">Replace File (Optional)</label><input type="file" id="file" onChange={(e) => setFile(e.target.files[0])} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
             <div><label htmlFor="expirationDate" className="block text-sm font-medium text-gray-700">Expiration Date (Optional)</label><input type="date" id="expirationDate" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" /></div>
             
             <div>
@@ -122,10 +123,12 @@ function EditDocumentModal({ isOpen, onClose, document: docToEdit, onDocumentUpd
               </div>
             )}
           </div>
+          {formError && <p className="text-red-500 text-sm mt-4">{formError}</p>}
           {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+          {uploading && <div className="mt-4"><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div></div><p className="text-sm text-center">Uploading... {Math.round(progress)}%</p></div>}
           <div className="mt-8 pt-6 border-t flex justify-end">
             <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-300">Cancel</button>
-            <button type="submit" disabled={loading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{loading ? 'Saving...' : 'Save Changes'}</button>
+            <button type="submit" disabled={uploading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{uploading ? 'Uploading...' : 'Save Changes'}</button>
           </div>
         </form>
       </div>
