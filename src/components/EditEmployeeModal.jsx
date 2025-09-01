@@ -91,7 +91,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
         employmentType: employee.employmentType || 'Full-time', managerEmail: employee.managerEmail || '',
         contractType: employee.contractType || 'CDI', contractEndDate: employee.contractEndDate || '',
         weeklyHours: employee.weeklyHours || '', workMode: employee.workMode || 'on-site',
-        monthlyGrossSalary: employee.monthlyGrossSalary || '', hourlyRate: employee.hourlyRate || '',
+        monthlyGrossSalary: employee.monthlyGrossSalary || '',
         phone: employee.phone || '', address: employee.address || '', dateOfBirth: employee.dateOfBirth || '',
         nationality: employee.nationality || '', maritalStatus: employee.maritalStatus || 'Single',
         personalEmail: employee.personalEmail || '',
@@ -170,7 +170,6 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
       await updateDoc(employeeRef, {
         ...formData,
         monthlyGrossSalary: Number(formData.monthlyGrossSalary) || null,
-        hourlyRate: Number(formData.hourlyRate) || null,
         cimrRate: Number(formData.cimrRate) || null,
         vacationBalance: Number(formData.vacationBalance) || 0,
         sickBalance: Number(formData.sickBalance) || 0,
@@ -242,7 +241,6 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
 
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Compensation</h3>
                     <ValidatedInput id="monthlyGrossSalary" label="Monthly Gross Salary (MAD)" value={formData.monthlyGrossSalary} onChange={handleChange} type="number" step="0.01" hint="For salaried employees." />
-                    <ValidatedInput id="hourlyRate" label="Hourly Rate (MAD)" value={formData.hourlyRate} onChange={handleChange} type="number" step="0.01" hint="For hourly employees." />
 
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Time Off Balances (Days)</h3>
                     <ValidatedInput id="vacationBalance" label="Vacation" value={formData.vacationBalance} onChange={handleChange} type="number" />

@@ -33,8 +33,8 @@ const InputMoney = ({ value, onCommit }) => {
   const handleBlur = () => { const parsed = parseMoney(localValue); onCommit(parsed); setLocalValue(formatNumber(parsed)); };
   return (<div className="relative w-full"><input className="w-full px-2 py-1.5 pr-12 text-right rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" inputMode="decimal" value={localValue} onChange={(e) => setLocalValue(e.target.value)} onBlur={handleBlur} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} /><span className="absolute inset-y-0 right-2 flex items-center text-gray-400 text-xs font-semibold">{PAYROLL_SETTINGS.currency}</span></div>);
 };
-const SummaryCard = ({ totals, onSave, onFinalize, isSaving, isValid }) => ( <div className="rounded-xl border bg-white p-6 sticky top-8 shadow-sm"><h2 className="text-lg font-bold text-gray-800 mb-4">Summary</h2><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Total Gross Pay</span><span className="font-medium">{formatCurrency(totals.gross)}</span></div><div className="flex justify-between text-gray-600"><span>- CNSS</span><span>{formatCurrency(totals.cnss)}</span></div><div className="flex justify-between text-gray-600"><span>- AMO</span><span>{formatCurrency(totals.amo)}</span></div><div className="flex justify-between text-gray-600"><span>- IR</span><span>{formatCurrency(totals.ir)}</span></div><div className="flex justify-between text-gray-600"><span>- Other Deductions</span><span>{formatCurrency(totals.otherDeductions)}</span></div><div className="flex justify-between text-xl pt-3 border-t mt-3"><span>Net Pay</span><span className="font-bold">{formatCurrency(totals.net)}</span></div></div><div className="mt-6 space-y-2"><button onClick={onSave} disabled={isSaving} className="w-full py-2.5 rounded-lg bg-gray-200 text-gray-800 font-bold hover:bg-gray-300 flex items-center justify-center gap-2"><Save size={16}/> {isSaving ? 'Saving...' : 'Save Draft'}</button><button onClick={onFinalize} disabled={isSaving || !isValid} className="w-full py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"><Check size={16}/> Finalize Payroll</button>{!isValid && <p className="text-xs text-red-600 text-center flex items-center gap-2 mt-2"><AlertTriangle size={14}/> Cannot finalize with negative net pay.</p>}</div></div> );
-const SettingsInfoCard = ({ title, children }) => ( <div className="p-4 rounded-xl bg-gray-50 border"><div className="text-gray-500 text-sm font-medium">{title}</div><div className="mt-1">{children}</div></div> );
+const SummaryCard = ({ totals, onSave, onFinalize, isSaving, isValid }) => ( <div className="rounded-lg border bg-white p-6 sticky top-8 shadow-sm"><h2 className="text-lg font-bold text-gray-800 mb-4">Summary</h2><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Total Gross Pay</span><span className="font-medium">{formatCurrency(totals.gross)}</span></div><div className="flex justify-between text-gray-600"><span>- CNSS</span><span>{formatCurrency(totals.cnss)}</span></div><div className="flex justify-between text-gray-600"><span>- AMO</span><span>{formatCurrency(totals.amo)}</span></div><div className="flex justify-between text-gray-600"><span>- IR</span><span>{formatCurrency(totals.ir)}</span></div><div className="flex justify-between text-gray-600"><span>- Other Deductions</span><span>{formatCurrency(totals.otherDeductions)}</span></div><div className="flex justify-between text-xl pt-3 border-t mt-3"><span>Net Pay</span><span className="font-bold">{formatCurrency(totals.net)}</span></div></div><div className="mt-6 space-y-2"><button onClick={onSave} disabled={isSaving} className="w-full py-2.5 rounded-lg bg-gray-200 text-gray-800 font-bold hover:bg-gray-300 flex items-center justify-center gap-2"><Save size={16}/> {isSaving ? 'Saving...' : 'Save Draft'}</button><button onClick={onFinalize} disabled={isSaving || !isValid} className="w-full py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"><Check size={16}/> Finalize Payroll</button>{!isValid && <p className="text-xs text-red-600 text-center flex items-center gap-2 mt-2"><AlertTriangle size={14}/> Cannot finalize with negative net pay.</p>}</div></div> );
+const SettingsInfoCard = ({ title, children }) => ( <div className="p-4 rounded-lg bg-gray-50 border"><div className="text-gray-500 text-sm font-medium">{title}</div><div className="mt-1">{children}</div></div> );
 
 function RunPayroll() {
   const { runId } = useParams();
@@ -106,14 +106,86 @@ function RunPayroll() {
   return (
     <>
       <FinalizePayrollModal isOpen={isFinalizeModalOpen} onClose={() => setIsFinalizeModalOpen(false)} onConfirm={handleConfirmFinalize} loading={isSaving} periodLabel={payrollRun?.periodLabel} />
-      <div className="min-h-screen bg-gray-50">
-        <header className="max-w-screen-2xl mx-auto px-6 py-6"><Link to="/payroll" className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-2"><ArrowLeft size={16}/> Back to Payroll Hub</Link><h1 className="text-2xl font-bold mt-2">Run Payroll: {payrollRun?.periodLabel}</h1></header>
-        <main className="max-w-screen-2xl mx-auto px-6 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-9 space-y-6">
-            <div className="rounded-xl border bg-white overflow-hidden shadow-sm"><div className="max-w-full overflow-x-auto"><table className="w-full table-fixed text-sm"><colgroup><col className="w-[24%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[12%]" /><col className="w-[16%]" /></colgroup><thead className="sticky top-0 bg-gray-50 z-10"><tr className="text-xs uppercase tracking-wide text-gray-500"><th className="text-left px-3 py-3">Employee</th><th className="text-right px-2 py-3">Base Salary</th><th className="text-right px-2 py-3">Bonuses</th><th className="text-right px-2 py-3">CNSS</th><th className="text-right px-2 py-3">AMO</th><th className="text-right px-2 py-3">IR</th><th className="text-right px-2 py-3">Other Deductions</th><th className="text-right px-3 py-3">Net Pay</th></tr></thead><tbody className="divide-y divide-gray-200">{employees.map(emp => { const data = employeeData[emp.id] || {}; const computed = employeeTotals[emp.id] || {}; const isInvalid = computed.netPay < 0; return ( <tr key={emp.id} className={`hover:bg-gray-50 ${isInvalid ? 'bg-red-50' : ''}`}><td className="px-3 py-2 align-middle font-semibold text-gray-800">{emp.name}</td><td className="px-2 py-2 align-middle"><InputMoney value={data.baseSalary} onCommit={(v) => handleDataChange(emp.id, 'baseSalary', v)} /></td><td className="px-2 py-2 align-middle"><InputMoney value={data.bonuses} onCommit={(v) => handleDataChange(emp.id, 'bonuses', v)} /></td><td className="px-2 py-2 text-right align-middle text-gray-600">{formatCurrency(computed.cnss)}</td><td className="px-2 py-2 text-right align-middle text-gray-600">{formatCurrency(computed.amo)}</td><td className="px-2 py-2 text-right align-middle text-gray-600">{formatCurrency(computed.ir)}</td><td className="px-2 py-2 align-middle"><InputMoney value={data.otherDeductions} onCommit={(v) => handleDataChange(emp.id, 'otherDeductions', v)} /></td><td className={`px-3 py-2 text-right align-middle font-bold ${isInvalid ? 'text-red-600' : 'text-gray-800'}`}>{formatCurrency(computed.netPay)}</td></tr> )})}</tbody></table></div></div>
-            <section className="rounded-xl border bg-white p-6 shadow-sm"><h3 className="font-bold text-gray-800 mb-4">Rules and Settings</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"><SettingsInfoCard title="CNSS (taux / plafond)"><div className="font-medium text-gray-800">{(PAYROLL_SETTINGS.cnss.rate * 100).toFixed(2)}% / {PAYROLL_SETTINGS.cnss.monthlyCeiling ? formatCurrency(PAYROLL_SETTINGS.cnss.monthlyCeiling) : "—"}</div></SettingsInfoCard><SettingsInfoCard title="AMO (taux / plafond)"><div className="font-medium text-gray-800">{(PAYROLL_SETTINGS.amo.rate * 100).toFixed(2)}% / {PAYROLL_SETTINGS.amo.monthlyCeiling ? formatCurrency(PAYROLL_SETTINGS.amo.monthlyCeiling) : "—"}</div></SettingsInfoCard><div className="md:col-span-2"><SettingsInfoCard title="Monthly IR Scales (with rapid reduction)"><ul className="mt-1 text-xs text-gray-700 list-disc pl-4 space-y-1">{PAYROLL_SETTINGS.irBrackets.map(({min, max, rate, deduction}, idx) => ( <li key={idx}>{formatCurrency(min)} – {isFinite(max) ? formatCurrency(max) : "∞"}: <span className="font-semibold">{(rate*100).toFixed(0)}%</span> − {formatCurrency(deduction)}</li> ))}</ul></SettingsInfoCard></div></div></section>
+      <div className="p-8">
+        <header className="mb-8">
+            <Link to="/payroll" className="text-sm text-blue-600 font-semibold hover:underline mb-2 flex items-center gap-2">
+                <ArrowLeft size={16}/> Back to Payroll Hub
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-800">Run Payroll: {payrollRun?.periodLabel}</h1>
+        </header>
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-9 space-y-8">
+            <div className="rounded-lg border bg-white overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <colgroup>
+                            <col style={{width: "20%"}} />
+                            <col style={{width: "13%"}} />
+                            <col style={{width: "13%"}} />
+                            <col style={{width: "9%"}} />
+                            <col style={{width: "9%"}} />
+                            <col style={{width: "9%"}} />
+                            <col style={{width: "13%"}} />
+                            <col style={{width: "14%"}} />
+                        </colgroup>
+                        <thead className="sticky top-0 bg-gray-50 z-10">
+                            <tr className="text-xs uppercase tracking-wide text-gray-500">
+                                <th className="text-left px-4 py-3">Employee</th>
+                                <th className="text-right px-3 py-3">Base Salary</th>
+                                <th className="text-right px-3 py-3">Bonuses</th>
+                                <th className="text-right px-3 py-3">CNSS</th>
+                                <th className="text-right px-3 py-3">AMO</th>
+                                <th className="text-right px-3 py-3">IR</th>
+                                <th className="text-right px-3 py-3">Other Deductions</th>
+                                <th className="text-right px-4 py-3">Net Pay</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {employees.map(emp => { 
+                                const data = employeeData[emp.id] || {}; 
+                                const computed = employeeTotals[emp.id] || {}; 
+                                const isInvalid = computed.netPay < 0; 
+                                return ( 
+                                    <tr key={emp.id} className={`hover:bg-gray-50 ${isInvalid ? 'bg-red-50' : ''}`}>
+                                        <td className="px-4 py-3 align-middle font-semibold text-gray-800">{emp.name}</td>
+                                        <td className="px-3 py-2 align-middle"><InputMoney value={data.baseSalary} onCommit={(v) => handleDataChange(emp.id, 'baseSalary', v)} /></td>
+                                        <td className="px-3 py-2 align-middle"><InputMoney value={data.bonuses} onCommit={(v) => handleDataChange(emp.id, 'bonuses', v)} /></td>
+                                        <td className="px-3 py-3 text-right align-middle text-gray-600">{formatCurrency(computed.cnss)}</td>
+                                        <td className="px-3 py-3 text-right align-middle text-gray-600">{formatCurrency(computed.amo)}</td>
+                                        <td className="px-3 py-3 text-right align-middle text-gray-600">{formatCurrency(computed.ir)}</td>
+                                        <td className="px-3 py-2 align-middle"><InputMoney value={data.otherDeductions} onCommit={(v) => handleDataChange(emp.id, 'otherDeductions', v)} /></td>
+                                        <td className={`px-4 py-3 text-right align-middle font-bold ${isInvalid ? 'text-red-600' : 'text-gray-800'}`}>{formatCurrency(computed.netPay)}</td>
+                                    </tr> 
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <section className="rounded-lg border bg-white p-6 shadow-sm">
+                <h3 className="font-bold text-gray-800 mb-4">Rules and Settings</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <SettingsInfoCard title="CNSS (taux / plafond)">
+                        <div className="font-medium text-gray-800">{(PAYROLL_SETTINGS.cnss.rate * 100).toFixed(2)}% / {PAYROLL_SETTINGS.cnss.monthlyCeiling ? formatCurrency(PAYROLL_SETTINGS.cnss.monthlyCeiling) : "—"}</div>
+                    </SettingsInfoCard>
+                    <SettingsInfoCard title="AMO (taux / plafond)">
+                        <div className="font-medium text-gray-800">{(PAYROLL_SETTINGS.amo.rate * 100).toFixed(2)}% / {PAYROLL_SETTINGS.amo.monthlyCeiling ? formatCurrency(PAYROLL_SETTINGS.amo.monthlyCeiling) : "—"}</div>
+                    </SettingsInfoCard>
+                    <div className="md:col-span-2">
+                        <SettingsInfoCard title="Monthly IR Scales (with rapid reduction)">
+                            <ul className="mt-1 text-xs text-gray-700 list-disc pl-4 space-y-1">
+                                {PAYROLL_SETTINGS.irBrackets.map(({min, max, rate, deduction}, idx) => ( 
+                                    <li key={idx}>{formatCurrency(min)} – {isFinite(max) ? formatCurrency(max) : "∞"}: <span className="font-semibold">{(rate*100).toFixed(0)}%</span> − {formatCurrency(deduction)}</li> 
+                                ))}
+                            </ul>
+                        </SettingsInfoCard>
+                    </div>
+                </div>
+            </section>
           </div>
-          <div className="lg:col-span-3"><SummaryCard totals={companyTotals} onSave={handleSaveDraft} onFinalize={handleFinalize} isSaving={isSaving} isValid={isPayrollValid} /></div>
+          <div className="lg:col-span-3">
+              <SummaryCard totals={companyTotals} onSave={handleSaveDraft} onFinalize={handleFinalize} isSaving={isSaving} isValid={isPayrollValid} />
+          </div>
         </main>
       </div>
     </>

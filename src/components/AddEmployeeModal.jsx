@@ -72,7 +72,7 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
   const [formData, setFormData] = useState({
     name: '', email: '', position: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'active',
     employmentType: 'Full-time', managerEmail: '', contractType: 'CDI',
-    contractEndDate: '', weeklyHours: '40', workMode: 'on-site', monthlyGrossSalary: '', hourlyRate: '',
+    contractEndDate: '', weeklyHours: '40', workMode: 'on-site', monthlyGrossSalary: '',
     phone: '', address: '', dateOfBirth: '', nationality: '', maritalStatus: 'Single',
     personalEmail: '',
     emergencyContactName: '', emergencyContactRelationship: '', emergencyContactPhone: '',
@@ -158,7 +158,6 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
       await addDoc(collection(db, 'companies', companyId, 'employees'), {
         ...formData,
         monthlyGrossSalary: Number(formData.monthlyGrossSalary) || null,
-        hourlyRate: Number(formData.hourlyRate) || null,
         cimrRate: Number(formData.cimrRate) || null,
         vacationBalance: Number(formData.vacationBalance) || 0,
         sickBalance: Number(formData.sickBalance) || 0,
@@ -175,7 +174,7 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
   };
 
   const handleClose = () => {
-    setFormData({ name: '', email: '', position: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'active', employmentType: 'Full-time', managerEmail: '', contractType: 'CDI', contractEndDate: '', weeklyHours: '40', workMode: 'on-site', monthlyGrossSalary: '', hourlyRate: '', phone: '', address: '', dateOfBirth: '', nationality: '', maritalStatus: 'Single', personalEmail: '', emergencyContactName: '', emergencyContactRelationship: '', emergencyContactPhone: '', nationalId: '', cnieExpiryDate: '', cnssNumber: '', cnssEnrollmentDate: '', amoScheme: '', cimrEnrollment: false, cimrRate: '', rib: '', bankBranch: '', vacationBalance: 15, sickBalance: 5, personalBalance: 3, kids: [], parents: [] });
+    setFormData({ name: '', email: '', position: '', department: '', hireDate: new Date().toISOString().split('T')[0], status: 'active', employmentType: 'Full-time', managerEmail: '', contractType: 'CDI', contractEndDate: '', weeklyHours: '40', workMode: 'on-site', monthlyGrossSalary: '', phone: '', address: '', dateOfBirth: '', nationality: '', maritalStatus: 'Single', personalEmail: '', emergencyContactName: '', emergencyContactRelationship: '', emergencyContactPhone: '', nationalId: '', cnieExpiryDate: '', cnssNumber: '', cnssEnrollmentDate: '', amoScheme: '', cimrEnrollment: false, cimrRate: '', rib: '', bankBranch: '', vacationBalance: 15, sickBalance: 5, personalBalance: 3, kids: [], parents: [] });
     setErrors({});
     setStep(1);
     onClose();
@@ -230,7 +229,6 @@ function AddEmployeeModal({ isOpen, onClose, onEmployeeAdded }) {
 
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Compensation</h3>
                     <ValidatedInput id="monthlyGrossSalary" label="Monthly Gross Salary (MAD)" value={formData.monthlyGrossSalary} onChange={handleChange} type="number" step="0.01" hint="For salaried employees." />
-                    <ValidatedInput id="hourlyRate" label="Hourly Rate (MAD)" value={formData.hourlyRate} onChange={handleChange} type="number" step="0.01" hint="For hourly employees." />
                     
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Time Off Balances (Days)</h3>
                     <ValidatedInput id="vacationBalance" label="Vacation" value={formData.vacationBalance} onChange={handleChange} type="number" />

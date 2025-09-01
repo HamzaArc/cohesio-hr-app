@@ -161,7 +161,7 @@ function Payroll() {
                                                 </span>
                                             </td>
                                             <td className="p-4 text-gray-700">{run.runAt || 'N/A'}</td>
-                                            <td className="p-4 font-semibold text-gray-800">${(Number(run.totalNetPay) || 0).toFixed(2)}</td>
+                                            <td className="p-4 font-semibold text-gray-800">{(Number(run.totalNetPay) || 0).toFixed(2)} MAD</td>
                                             <td className="p-4">
                                                 <button onClick={() => handleActionClick(run)} className="p-2 hover:bg-gray-200 rounded-full">
                                                     <Eye size={16} className="text-gray-600" />

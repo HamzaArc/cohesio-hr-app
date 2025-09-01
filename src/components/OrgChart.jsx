@@ -1,63 +1,108 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-// A reusable component for each employee card in the chart
-const EmployeeCard = ({ employee, isCurrentUser }) => (
-  <div className={`flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border ${isCurrentUser ? 'border-blue-500 border-2' : 'border-gray-200'} min-w-[160px]`}>
+// A color palette for departmental grouping.
+const departmentColors = [
+  '#4A90E2', // Blue
+  '#50E3C2', // Teal
+  '#9013FE', // Purple
+  '#F5A623', // Orange
+  '#D0021B', // Red
+  '#BD10E0', // Pink
+];
+
+// A simple hash function to assign a consistent color to each department.
+const getColorForDepartment = (department) => {
+  if (!department) return '#4A90E2'; // Default color
+  let hash = 0;
+  for (let i = 0; i < department.length; i++) {
+    hash = department.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return departmentColors[Math.abs(hash) % departmentColors.length];
+};
+
+// EmployeeCard component remains the same, but will be used in the new structure.
+const EmployeeCard = ({ employee, isCurrentUser, color }) => (
+  <div className={`relative flex flex-col items-center p-4 bg-white rounded-xl shadow-lg border-t-4 min-w-[180px]`} style={{ borderTopColor: color }}>
     <img
       src={`https://placehold.co/64x64/E2E8F0/4A5568?text=${employee.name.charAt(0)}`}
       alt={employee.name}
-      className="w-16 h-16 rounded-full mb-2"
+      className="w-16 h-16 rounded-full mb-3 border-2 border-white shadow-md"
     />
-    <Link to={`/people/${employee.id}`} className="font-bold text-gray-800 text-center hover:text-blue-600">{employee.name}</Link>
+    <Link to={`/people/${employee.id}`} className="font-bold text-gray-800 text-center hover:text-blue-600 transition-colors">{employee.name}</Link>
     <p className="text-xs text-gray-500 text-center">{employee.position}</p>
-    {isCurrentUser && <span className="text-xs font-bold text-blue-600 mt-1">(You)</span>}
+    <p className="text-xs font-semibold mt-1" style={{ color }}>{employee.department || 'No Department'}</p>
+    {isCurrentUser && <span className="absolute top-2 right-2 text-xs font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded-full">You</span>}
   </div>
 );
 
-// A recursive component to render a manager and their direct reports
+// TreeNode component is updated to render the new layout with department tags above the lines.
 const TreeNode = ({ node, currentUser }) => {
-    return (
-        <div className="flex flex-col items-center">
-            <EmployeeCard employee={node} isCurrentUser={node.email === currentUser?.email} />
-            {node.children && node.children.length > 0 && (
-                <>
-                    <div className="w-px h-8 bg-gray-300"></div>
-                    <div className="flex justify-center relative">
-                        <div className="absolute top-0 h-px w-full bg-gray-300"></div>
-                        {node.children.map(child => (
-                            <div key={child.id} className="px-4 relative">
-                                <div className="absolute top-0 left-1/2 w-px h-8 bg-gray-300 -translate-x-1/2"></div>
-                                <TreeNode node={child} currentUser={currentUser} />
-                            </div>
-                        ))}
+  const departments = (node.children || []).reduce((acc, child) => {
+    const dept = child.department || 'No Department';
+    if (!acc[dept]) {
+      acc[dept] = [];
+    }
+    acc[dept].push(child);
+    return acc;
+  }, {});
+
+  const departmentColor = getColorForDepartment(node.department);
+
+  return (
+    <div className="flex flex-col items-center">
+      <EmployeeCard employee={node} isCurrentUser={node.email === currentUser?.email} color={departmentColor} />
+      {Object.keys(departments).length > 0 && (
+        <>
+          {/* Vertical line from manager down to the horizontal connector */}
+          <div className="w-px h-12 bg-gray-400" />
+          
+          <div className="flex justify-center relative">
+            {/* Main horizontal line connecting the department groups */}
+            <div className="absolute top-6 h-px w-full bg-gray-400" />
+
+            {Object.entries(departments).map(([department, children]) => (
+              <div key={department} className="px-6 relative">
+                {/* Vertical line from horizontal connector down towards the children cards */}
+                <div className="absolute top-6 left-1/2 w-px h-6 bg-gray-400 -translate-x-1/2" />
+                
+                <div className="flex flex-col items-center pt-12"> {/* Add padding to create space for the tag */}
+                  {/* Department Tag - positioned absolutely above the horizontal line */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2">
+                    <div className="px-4 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: getColorForDepartment(department) }}>
+                      {department}
                     </div>
-                </>
-            )}
-        </div>
-    );
+                  </div>
+
+                  <div className="flex justify-center items-start gap-8">
+                    {children.map(child => (
+                      <TreeNode key={child.id} node={child} currentUser={currentUser} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
 function OrgChart({ employees, currentUser }) {
-  // --- NEW: A much more robust, two-pass algorithm for building the tree ---
   const buildTree = () => {
     const nodes = {};
-    // First pass: create a node for each employee and index it by its own ID.
     employees.forEach(emp => {
       nodes[emp.id] = { ...emp, children: [] };
     });
 
     const tree = [];
-    // Second pass: iterate through all created nodes to link them.
     Object.values(nodes).forEach(node => {
-      // Find the manager for the current node.
       const manager = employees.find(m => m.email === node.managerEmail);
       
       if (manager && manager.id !== node.id && nodes[manager.id]) {
-        // If a manager exists in our map, add the current node as a child.
         nodes[manager.id].children.push(node);
       } else {
-        // If no manager is found, this is a top-level employee (a "root").
         tree.push(node);
       }
     });
@@ -76,7 +121,7 @@ function OrgChart({ employees, currentUser }) {
   }
 
   return (
-    <div className="p-8 bg-gray-50 rounded-b-lg overflow-x-auto">
+    <div className="p-12 bg-gray-50 rounded-b-lg overflow-x-auto">
       <div className="flex justify-center items-start gap-8">
         {tree.map(rootNode => (
           <TreeNode key={rootNode.id} node={rootNode} currentUser={currentUser} />
