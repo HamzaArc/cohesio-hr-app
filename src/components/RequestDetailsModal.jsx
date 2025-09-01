@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
-import { X, CheckCircle, XCircle, Send, Calendar, RotateCcw, Trash2 } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext'; // <-- This was the missing line
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { X, CheckCircle, XCircle, Send, Calendar, RotateCcw, Trash2, UploadCloud, FileText } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext'; 
+import useFileUpload from '../hooks/useFileUpload';
+
 
 const DetailField = ({ label, value }) => ( <div><p className="text-sm text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value}</p></div> );
-const HistoryItem = ({ icon, title, date, isLast }) => ( <div className="relative pl-8">{!isLast && <div className="absolute left-[7px] top-5 h-full w-0.5 bg-gray-200"></div>}<div className="absolute left-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-white">{icon}</div><p className="font-semibold text-gray-700">{title}</p><p className="text-xs text-gray-500">{date}</p></div> );
+const HistoryItem = ({ icon, title, date, isLast, children }) => ( <div className="relative pl-8">{!isLast && <div className="absolute left-[7px] top-5 h-full w-0.5 bg-gray-200"></div>}<div className="absolute left-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-white">{icon}</div><p className="font-semibold text-gray-700">{title}</p><p className="text-xs text-gray-500">{date}</p>{children}</div> );
+
 
 function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedule }) {
   const [history, setHistory] = useState([]);
   const currentUser = auth.currentUser;
   const { companyId } = useAppContext(); 
+  const { uploading, progress, error: uploadError, uploadFile } = useFileUpload();
+  const [lateCertificate, setLateCertificate] = useState(null);
+
 
   useEffect(() => {
     if (isOpen && request && companyId) {
@@ -21,6 +27,22 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
       return () => unsubscribe();
     }
   }, [isOpen, request, companyId]);
+
+  const handleLateUpload = async () => {
+      if (!lateCertificate || !request || !companyId) return;
+      try {
+          const fileURL = await uploadFile(lateCertificate, `medical-certificates/${companyId}/${currentUser.uid}`);
+          const requestRef = doc(db, 'companies', companyId, 'timeOffRequests', request.id);
+          await updateDoc(requestRef, {
+              medicalCertificateUrl: fileURL,
+              status: 'Approved' // Auto-approve on late upload
+          });
+          setLateCertificate(null);
+      } catch (err) {
+          console.error("Error uploading late certificate:", err);
+      }
+  };
+
 
   if (!isOpen || !request) return null;
 
@@ -46,6 +68,12 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
   const isOwner = currentUser?.email === request.userEmail;
   const canWithdraw = request.status === 'Pending';
   const canReschedule = request.status === 'Approved' && new Date(request.startDate) > new Date();
+  
+  const today = new Date();
+  const twoDaysAfterEnd = new Date(request.endDate);
+  twoDaysAfterEnd.setDate(twoDaysAfterEnd.getDate() + 2);
+  const canUploadLate = request.leaveType === 'Sick Day' && !request.medicalCertificateUrl && today <= twoDaysAfterEnd && new Date(request.startDate) < today;
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
@@ -68,12 +96,40 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
                 {request.description && ( <div className="mt-4 border-t pt-4"><DetailField label="Description" value={request.description} /></div> )}
             </div>
 
+             { (request.medicalCertificateUrl || canUploadLate) && (
+              <div className="p-4 border rounded-lg">
+                  <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2"><FileText size={16}/> Medical Certificate</h3>
+                  {request.medicalCertificateUrl ? (
+                      <a href={request.medicalCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">View Document</a>
+                  ) : (
+                      <div>
+                          <p className="text-xs text-gray-500 mb-2">A document is required. You can upload it until {twoDaysAfterEnd.toLocaleDateString()}.</p>
+                          <div className="flex items-center gap-2">
+                              <input type="file" onChange={(e) => setLateCertificate(e.target.files[0])} className="w-full border p-1 rounded-md text-sm"/>
+                              <button onClick={handleLateUpload} disabled={uploading || !lateCertificate} className="bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg text-sm disabled:bg-gray-400">
+                                  {uploading ? `${Math.round(progress)}%` : 'Upload'}
+                              </button>
+                          </div>
+                          {uploadError && <p className="text-red-500 text-xs mt-1">{uploadError}</p>}
+                      </div>
+                  )}
+              </div>
+            )}
+
+
             <div>
                 <h3 className="font-bold text-gray-800 mb-4">History</h3>
                 <div className="space-y-4">
                     {history.map((item, index) => (
                         <HistoryItem key={index} icon={getHistoryIcon(item.action)} title={item.action} date={item.timestamp} isLast={index === history.length - 1} />
                     ))}
+                     {request.medicalCertificateUrl && (
+                        <HistoryItem 
+                            icon={<CheckCircle size={16} className="text-green-500" />} 
+                            title="Medical certificate provided" 
+                            isLast={true}
+                        />
+                    )}
                 </div>
             </div>
         </div>

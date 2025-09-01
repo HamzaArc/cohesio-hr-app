@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, writeBatch, increment, query, where, getDocs } from 'firebase/firestore';
-import { X, AlertCircle, Users, ArrowRight, Info } from 'lucide-react';
+import { X, AlertCircle, Users, ArrowRight, Info, Upload } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
+import useFileUpload from '../hooks/useFileUpload'; // Import the useFileUpload hook
 
-// --- Helper Functions ---
+// --- Helper Functions --- (Assuming these are in a separate file or at the top)
 const isWeekend = (date, weekends = { sat: true, sun: true }) => {
     const day = date.getDay();
     const map = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
@@ -53,6 +54,7 @@ function calculateBusinessDays(startDate, endDate, weekends, holidays) {
 // --- Main Component ---
 function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserProfile, myRequests, weekends, holidays, allRequests, myTeam }) {
   const { employees, companyId, currentUser } = useAppContext();
+  const { uploading, progress, error: uploadError, uploadFile } = useFileUpload();
   const [leaveType, setLeaveType] = useState('Vacation');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -61,6 +63,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestedDates, setSuggestedDates] = useState(null);
+  const [medicalCertificate, setMedicalCertificate] = useState(null);
 
   const manager = useMemo(() => {
     if (!currentUserProfile || !employees) return null;
@@ -87,12 +90,39 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
       if (startDate && endDate) { setError('End date cannot be before the start date.'); }
     }
   }, [startDate, endDate, weekends, holidays]);
+  
+    // New useEffect to handle sick day date validation
+  useEffect(() => {
+    if (leaveType === 'Sick Day' && startDate) {
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+      today.setHours(0, 0, 0, 0);
+      yesterday.setHours(0, 0, 0, 0);
+      const selectedStartDate = new Date(startDate);
+      selectedStartDate.setMinutes(selectedStartDate.getMinutes() + selectedStartDate.getTimezoneOffset());
+
+
+      if (selectedStartDate < yesterday) {
+        setError('Sick days can only be requested for today or yesterday.');
+      } else {
+        setError('');
+      }
+    } else {
+        setError('');
+    }
+  }, [startDate, leaveType]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (error || !startDate || !endDate || totalDays <= 0 || !companyId) { 
-        setError('Please select a valid date range.'); 
+        setError(error || 'Please select a valid date range.'); 
         return; 
+    }
+     if (leaveType === 'Sick Day' && !medicalCertificate) {
+      setError('A medical certificate is required for sick day requests.');
+      return;
     }
     setLoading(true);
     setError('');
@@ -138,15 +168,21 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
           return;
       }
 
+      let medicalCertificateUrl = null;
+      if (leaveType === 'Sick Day' && medicalCertificate) {
+          medicalCertificateUrl = await uploadFile(medicalCertificate, `medical-certificates/${companyId}/${currentUser.uid}`);
+      }
+
       const batch = writeBatch(db);
       const newRequestRef = doc(requestsRef);
       
-      const status = manager ? 'Pending' : 'Approved';
+      const status = (leaveType === 'Sick Day' && medicalCertificateUrl) ? 'Approved' : (manager ? 'Pending' : 'Approved');
 
       batch.set(newRequestRef, { 
         leaveType, startDate, endDate, description, totalDays,
         status: status, 
         requestedAt: serverTimestamp(), userEmail: currentUser.email,
+        medicalCertificateUrl: medicalCertificateUrl,
       });
       if (leaveType !== 'Personal (Unpaid)') {
         const employeeRef = doc(db, 'companies', companyId, 'employees', currentUserProfile.id);
@@ -175,6 +211,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
   const handleClose = () => {
     setLeaveType('Vacation'); setStartDate(''); setEndDate('');
     setDescription(''); setTotalDays(0); setError(''); setSuggestedDates(null);
+    setMedicalCertificate(null);
     onClose();
   };
 
@@ -219,6 +256,18 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
               <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">End Date</label>
               <input type="date" id="endDate" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
+
+            {leaveType === 'Sick Day' && (
+              <div className="md:col-span-2">
+                <label htmlFor="medicalCertificate" className="block text-sm font-medium text-gray-700">Medical Certificate</label>
+                <div className="mt-1 flex items-center gap-2">
+                    <input type="file" id="medicalCertificate" onChange={(e) => setMedicalCertificate(e.target.files[0])} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                    {uploading && <div className="text-sm">{Math.round(progress)}%</div>}
+                </div>
+                 {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
+              </div>
+            )}
+
             <div className="md:col-span-2">
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description (Optional)</label>
               <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows="2" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
@@ -247,7 +296,9 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                     <Info size={20} className="text-blue-700 mr-3"/>
                     <div>
                         <h3 className="font-semibold text-blue-800 text-sm">Approval Information</h3>
-                        {manager ? (
+                        {leaveType === 'Sick Day' ? (
+                            <p className="text-xs text-blue-700 mt-1">Sick day requests with a medical certificate are automatically approved.</p>
+                        ) : manager ? (
                             <p className="text-xs text-blue-700 mt-1">
                                 This request will be sent to <strong>{manager.name}</strong> for approval.
                             </p>
@@ -284,8 +335,8 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
 
           <div className="mt-8 pt-6 border-t flex justify-end">
             <button type="button" onClick={handleClose} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg mr-2 hover:bg-gray-300">Cancel</button>
-            <button type="submit" disabled={loading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">
-              {loading ? 'Submitting...' : 'Submit Request'}
+            <button type="submit" disabled={loading || uploading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400">
+              {loading || uploading ? 'Submitting...' : 'Submit Request'}
             </button>
           </div>
         </form>
