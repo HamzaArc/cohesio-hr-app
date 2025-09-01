@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Edit, Trash, Users, UserPlus, Share2, Mail } from 'lucide-react';
 import { db } from '../firebase';
@@ -23,6 +23,7 @@ function People() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [layoutVersion, setLayoutVersion] = useState(0);
 
   const filteredEmployees = useMemo(() => {
     return allEmployees.filter(emp =>
@@ -58,12 +59,16 @@ function People() {
       setIsDeleting(false);
     }
   };
+
+  const handleLayout = useCallback(() => {
+    setLayoutVersion(v => v + 1);
+  }, []);
   
   const renderContent = () => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     
     if (activeTab === 'Org Chart') {
-        return <OrgChart employees={allEmployees} currentUser={currentUser} />;
+        return <OrgChart key={layoutVersion} employees={allEmployees} currentUser={currentUser} onLayout={handleLayout} />;
     }
 
     return (

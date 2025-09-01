@@ -1,19 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactFlow, Controls, Background, Handle, Position, useNodesState, useEdgesState, Panel } from '@xyflow/react';
+import dagre from 'dagre';
+import '@xyflow/react/dist/style.css';
 
-// A color palette for departmental grouping.
+// --- Dagre layouting ---
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+const nodeWidth = 200;
+const nodeHeight = 120;
+
+const getLayoutedElements = (nodes, edges, direction = 'TB') => {
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({
+    rankdir: direction,
+    ranksep: 120, // Increased vertical spacing
+    nodesep: 70,  // Increased horizontal spacing
+  });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  nodes.forEach((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    node.targetPosition = isHorizontal ? Position.Left : Position.Top;
+    node.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
+    node.position = {
+      x: nodeWithPosition.x - nodeWidth / 2,
+      y: nodeWithPosition.y - nodeHeight / 2,
+    };
+  });
+
+  return { nodes, edges };
+};
+
+// --- Color Palette ---
 const departmentColors = [
-  '#4A90E2', // Blue
-  '#50E3C2', // Teal
-  '#9013FE', // Purple
-  '#F5A623', // Orange
-  '#D0021B', // Red
-  '#BD10E0', // Pink
+  '#4A90E2', '#50E3C2', '#9013FE', '#F5A623', '#D0021B', '#BD10E0',
 ];
 
-// A simple hash function to assign a consistent color to each department.
 const getColorForDepartment = (department) => {
-  if (!department) return '#4A90E2'; // Default color
+  if (!department) return '#4A90E2';
   let hash = 0;
   for (let i = 0; i < department.length; i++) {
     hash = department.charCodeAt(i) + ((hash << 5) - hash);
@@ -21,112 +55,164 @@ const getColorForDepartment = (department) => {
   return departmentColors[Math.abs(hash) % departmentColors.length];
 };
 
-// EmployeeCard component remains the same, but will be used in the new structure.
-const EmployeeCard = ({ employee, isCurrentUser, color }) => (
-  <div className={`relative flex flex-col items-center p-4 bg-white rounded-xl shadow-lg border-t-4 min-w-[180px]`} style={{ borderTopColor: color }}>
-    <img
-      src={`https://placehold.co/64x64/E2E8F0/4A5568?text=${employee.name.charAt(0)}`}
-      alt={employee.name}
-      className="w-16 h-16 rounded-full mb-3 border-2 border-white shadow-md"
-    />
-    <Link to={`/people/${employee.id}`} className="font-bold text-gray-800 text-center hover:text-blue-600 transition-colors">{employee.name}</Link>
-    <p className="text-xs text-gray-500 text-center">{employee.position}</p>
-    <p className="text-xs font-semibold mt-1" style={{ color }}>{employee.department || 'No Department'}</p>
-    {isCurrentUser && <span className="absolute top-2 right-2 text-xs font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded-full">You</span>}
-  </div>
-);
-
-// TreeNode component is updated to render the new layout with department tags above the lines.
-const TreeNode = ({ node, currentUser }) => {
-  const departments = (node.children || []).reduce((acc, child) => {
-    const dept = child.department || 'No Department';
-    if (!acc[dept]) {
-      acc[dept] = [];
-    }
-    acc[dept].push(child);
-    return acc;
-  }, {});
-
-  const departmentColor = getColorForDepartment(node.department);
+// --- Custom Node Component ---
+const EmployeeNode = React.memo(({ data }) => {
+  const { employee, isCurrentUser } = data;
+  const color = getColorForDepartment(employee.department);
 
   return (
-    <div className="flex flex-col items-center">
-      <EmployeeCard employee={node} isCurrentUser={node.email === currentUser?.email} color={departmentColor} />
-      {Object.keys(departments).length > 0 && (
-        <>
-          {/* Vertical line from manager down to the horizontal connector */}
-          <div className="w-px h-12 bg-gray-400" />
-          
-          <div className="flex justify-center relative">
-            {/* Main horizontal line connecting the department groups */}
-            <div className="absolute top-6 h-px w-full bg-gray-400" />
-
-            {Object.entries(departments).map(([department, children]) => (
-              <div key={department} className="px-6 relative">
-                {/* Vertical line from horizontal connector down towards the children cards */}
-                <div className="absolute top-6 left-1/2 w-px h-6 bg-gray-400 -translate-x-1/2" />
-                
-                <div className="flex flex-col items-center pt-12"> {/* Add padding to create space for the tag */}
-                  {/* Department Tag - positioned absolutely above the horizontal line */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2">
-                    <div className="px-4 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: getColorForDepartment(department) }}>
-                      {department}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-center items-start gap-8">
-                    {children.map(child => (
-                      <TreeNode key={child.id} node={child} currentUser={currentUser} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    <>
+      <Handle type="target" position={Position.Top} style={{ background: '#555' }} />
+      <div className={`relative flex flex-col items-center p-4 bg-white rounded-xl shadow-lg border-t-4 min-w-[180px]`} style={{ borderTopColor: color }}>
+        <img
+          src={`https://placehold.co/64x64/E2E8F0/4A5568?text=${employee.name.charAt(0)}`}
+          alt={employee.name}
+          className="w-16 h-16 rounded-full mb-3 border-2 border-white shadow-md"
+        />
+        <Link to={`/people/${employee.id}`} className="font-bold text-gray-800 text-center hover:text-blue-600 transition-colors">{employee.name}</Link>
+        <p className="text-xs text-gray-500 text-center">{employee.position}</p>
+        <p className="text-xs font-semibold mt-1" style={{ color }}>{employee.department || 'No Department'}</p>
+        {isCurrentUser && <span className="absolute top-2 right-2 text-xs font-bold bg-blue-100 text-blue-600 px-2 py-1 rounded-full">You</span>}
+      </div>
+      <Handle type="source" position={Position.Bottom} style={{ background: '#555' }} />
+    </>
   );
-};
+});
 
-function OrgChart({ employees, currentUser }) {
-  const buildTree = () => {
-    const nodes = {};
-    employees.forEach(emp => {
-      nodes[emp.id] = { ...emp, children: [] };
-    });
+// --- Main OrgChart Component ---
+function OrgChart({ employees, currentUser, onLayout }) {
+  const nodeTypes = useMemo(() => ({ employee: EmployeeNode }), []);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const dragData = useRef(null);
 
-    const tree = [];
-    Object.values(nodes).forEach(node => {
-      const manager = employees.find(m => m.email === node.managerEmail);
-      
-      if (manager && manager.id !== node.id && nodes[manager.id]) {
-        nodes[manager.id].children.push(node);
-      } else {
-        tree.push(node);
-      }
-    });
+  useEffect(() => {
+    if (employees.length > 0) {
+      // Sort employees to encourage departmental grouping by dagre
+      const employeesById = new Map(employees.map(e => [e.id, e]));
+      const sortedEmployees = [...employees].sort((a, b) => {
+        const deptA = a.department || 'zzz';
+        const deptB = b.department || 'zzz';
+        if (deptA < deptB) return -1;
+        if (deptA > deptB) return 1;
+        return a.name.localeCompare(b.name);
+      });
 
-    return tree;
-  };
+      const initialNodes = sortedEmployees.map(emp => ({
+        id: emp.id,
+        type: 'employee',
+        data: { employee: emp, isCurrentUser: emp.email === currentUser?.email },
+        position: { x: 0, y: 0 }
+      }));
+  
+      const initialEdges = sortedEmployees
+        .map(emp => {
+          const manager = employees.find(m => m.email === emp.managerEmail);
+          if (manager && manager.id !== emp.id) {
+            return {
+              id: `e-${manager.id}-${emp.id}`,
+              source: manager.id,
+              target: emp.id,
+              type: 'smoothstep',
+              animated: true,
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+  
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(initialNodes, initialEdges);
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+    }
+  }, [employees, currentUser, setNodes, setEdges, onLayout]); // Rerun onLayout when reset is clicked
+  
+  const getDescendants = useCallback((nodeId, allEdges) => {
+    const descendants = new Set();
+    const queue = [nodeId];
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      const childrenEdges = allEdges.filter(edge => edge.source === currentId);
+      childrenEdges.forEach(edge => {
+        if (!descendants.has(edge.target)) {
+          descendants.add(edge.target);
+          queue.push(edge.target);
+        }
+      });
+    }
+    return Array.from(descendants);
+  }, []);
 
-  const tree = buildTree();
+  const onNodeDragStart = useCallback((_, node) => {
+    const descendantIds = getDescendants(node.id, edges);
+    const draggedNode = nodes.find(n => n.id === node.id);
+    const descendants = nodes.filter(n => descendantIds.includes(n.id));
+    
+    dragData.current = {
+      draggedNode,
+      descendants: descendants.map(desc => ({
+        ...desc,
+        dx: desc.position.x - draggedNode.position.x,
+        dy: desc.position.y - draggedNode.position.y,
+      })),
+    };
+  }, [nodes, edges, getDescendants]);
+
+  const onNodeDrag = useCallback((_, node) => {
+    if (!dragData.current) return;
+    const { descendants } = dragData.current;
+    
+    setNodes(nds =>
+      nds.map(n => {
+        if (n.id === node.id) {
+          return { ...n, position: node.position };
+        }
+        const descendant = descendants.find(d => d.id === n.id);
+        if (descendant) {
+          return {
+            ...n,
+            position: {
+              x: node.position.x + descendant.dx,
+              y: node.position.y + descendant.dy,
+            },
+          };
+        }
+        return n;
+      })
+    );
+  }, [setNodes]);
+
+  const onNodeDragStop = useCallback(() => {
+    dragData.current = null;
+  }, []);
+
 
   if (employees.length === 0) {
     return <div className="text-center text-gray-500 p-8">No employees to display in the chart.</div>;
   }
-  
-  if (tree.length === 0 && employees.length > 0) {
-    return <div className="text-center text-gray-500 p-8">Could not determine a top-level manager. Please check your data for circular reporting structures.</div>;
-  }
 
   return (
-    <div className="p-12 bg-gray-50 rounded-b-lg overflow-x-auto">
-      <div className="flex justify-center items-start gap-8">
-        {tree.map(rootNode => (
-          <TreeNode key={rootNode.id} node={rootNode} currentUser={currentUser} />
-        ))}
-      </div>
+    <div className="p-2 bg-gray-50 rounded-b-lg" style={{ height: '70vh' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
+        fitView
+        className="bg-gray-100"
+      >
+        <Panel position="top-right">
+          <button onClick={onLayout} className="bg-white text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 border border-gray-300 shadow-sm">
+            Reset Layout
+          </button>
+        </Panel>
+        <Controls />
+        <Background gap={12} size={1} />
+      </ReactFlow>
     </div>
   );
 }
