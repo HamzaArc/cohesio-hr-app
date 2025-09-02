@@ -52,12 +52,10 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
   if (!isOpen || !request) return null;
 
   const getStatusStyle = (status) => {
-    switch(status) {
-        case 'Approved': return 'bg-green-100 text-green-700';
-        case 'Pending': return 'bg-yellow-100 text-yellow-700';
-        case 'Denied': return 'bg-red-100 text-red-700';
-        default: return 'bg-gray-100 text-gray-600';
-    }
+    if (status.includes('Approved')) return 'bg-green-100 text-green-700';
+    if (status.includes('Pending')) return 'bg-yellow-100 text-yellow-700';
+    if (status.includes('Denied')) return 'bg-red-100 text-red-700';
+    return 'bg-gray-100 text-gray-600';
   }
   
   const getHistoryIcon = (action) => {
@@ -71,7 +69,7 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
   }
   
   const isOwner = currentUser?.email === request.userEmail;
-  const canWithdraw = request.status === 'Pending';
+  const canWithdraw = request.status.includes('Pending');
   const canReschedule = request.status === 'Approved' && new Date(request.startDate) > new Date();
   
   const today = new Date();
@@ -139,22 +137,15 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
                 </div>
             )}
 
-
             <div>
-                <h3 className="font-bold text-gray-800 mb-4">History</h3>
+                <h3 className="font-bold text-gray-800 mb-4">Approval History</h3>
                 <div className="space-y-4">
                     {history.map((item, index) => (
-                        <HistoryItem key={index} icon={getHistoryIcon(item.action)} title={item.action} date={item.timestamp} isLast={index === history.length - 1} />
+                        <HistoryItem key={index} icon={getHistoryIcon(item.action)} title={`${item.action} by ${item.user}`} date={item.timestamp} isLast={index === history.length - 1} />
                     ))}
-                     {request.medicalCertificateUrl && (
-                        <HistoryItem 
-                            icon={<CheckCircle size={16} className="text-green-500" />} 
-                            title="Medical certificate provided" 
-                            isLast={true}
-                        />
-                    )}
                 </div>
             </div>
+
         </div>
 
         <div className="mt-8 pt-6 border-t flex justify-between items-center">

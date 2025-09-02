@@ -75,9 +75,8 @@ function TimeOff() {
   }, [allRequests, employees]);
 
   const pendingTeamRequests = useMemo(() => {
-    const teamEmails = new Set(myTeam.map(e => e.email));
-    return requestsWithNameAndDept.filter(req => req.status === 'Pending' && teamEmails.has(req.userEmail));
-  }, [requestsWithNameAndDept, myTeam]);
+    return requestsWithNameAndDept.filter(req => req.currentApprover === currentUser.email);
+  }, [requestsWithNameAndDept, currentUser]);
 
   const filteredRequestsForList = useMemo(() => {
     if (!currentUser) return [];
@@ -108,7 +107,7 @@ function TimeOff() {
 
   const addHistoryLog = async (requestId, action) => { 
       if (!companyId) return;
-      await addDoc(collection(db, 'companies', companyId, 'timeOffRequests', requestId, 'history'), { action, timestamp: serverTimestamp() }); 
+      await addDoc(collection(db, 'companies', companyId, 'timeOffRequests', requestId, 'history'), { action, timestamp: serverTimestamp(), user: currentUser.email }); 
     };
   const handleRequestSubmitted = (newRequestId) => { setIsAddModalOpen(false); addHistoryLog(newRequestId, 'Created'); };
 
@@ -125,8 +124,27 @@ function TimeOff() {
     const days = request.totalDays;
     const batch = writeBatch(db);
 
-    batch.update(requestRef, { status: newStatus });
-    if (newStatus === 'Denied' && request.status === 'Pending') { batch.update(employeeRef, { [balanceField]: increment(days) }); }
+    if (newStatus === 'Denied') {
+      batch.update(requestRef, { status: 'Denied', currentApprover: null });
+      if (request.leaveType !== 'Personal (Unpaid)') {
+        batch.update(employeeRef, { [balanceField]: increment(days) });
+      }
+    } else {
+      const currentApproverIndex = request.approvers.findIndex(a => a.email === currentUser.email);
+      const nextApprover = request.approvers[currentApproverIndex + 1];
+
+      const newApprovers = request.approvers.map((a, i) => i === currentApproverIndex ? { ...a, status: 'approved' } : a);
+
+      if (nextApprover) {
+        batch.update(requestRef, {
+          status: `Pending ${employees.find(e => e.email === nextApprover.email)?.name || 'Next Manager'} Approval`,
+          currentApprover: nextApprover.email,
+          approvers: newApprovers
+        });
+      } else {
+        batch.update(requestRef, { status: 'Approved', currentApprover: null, approvers: newApprovers });
+      }
+    }
     
     await batch.commit();
     await addHistoryLog(request.id, newStatus);
@@ -210,7 +228,7 @@ function TimeOff() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <BalanceCard icon={<Plane />} title="Vacation" balance={currentUserProfile?.vacationBalance ?? '...'} bgColor="bg-blue-100" iconColor="text-blue-600" />
-            {isManager && <BalanceCard icon={<UserCheck />} title="Pending Approvals" balance={pendingTeamRequests.length} bgColor="bg-orange-100" iconColor="text-orange-600" />}
+            {(isManager || pendingTeamRequests.length > 0) && <BalanceCard icon={<UserCheck />} title="Pending Approvals" balance={pendingTeamRequests.length} bgColor="bg-orange-100" iconColor="text-orange-600" />}
             <BalanceCard icon={<Heart />} title="Sick Days" balance={currentUserProfile?.sickBalance ?? '...'} bgColor="bg-green-100" iconColor="text-green-600" />
             <BalanceCard icon={<Sun />} title="Personal (Unpaid)" balance={currentUserProfile?.personalBalance ?? '...'} bgColor="bg-purple-100" iconColor="text-purple-600" />
         </div>
@@ -219,7 +237,7 @@ function TimeOff() {
             <div className="border-b border-gray-200 px-2 flex flex-wrap">
                 <MainTab label="Requests" active={activeTab === 'Requests'} onClick={() => setActiveTab('Requests')} />
                 <MainTab label="Calendar" active={activeTab === 'Calendar'} onClick={() => setActiveTab('Calendar')} />
-                {isManager && <MainTab label="Team Approvals" active={activeTab === 'Approvals'} onClick={() => setActiveTab('Approvals')} />}
+                {(isManager || pendingTeamRequests.length > 0) && <MainTab label="Team Approvals" active={activeTab === 'Approvals'} onClick={() => setActiveTab('Approvals')} />}
                  {isManager && <MainTab label="Sick Days Without Documents" active={activeTab === 'Sick Days'} onClick={() => setActiveTab('Sick Days')} />}
                 <MainTab label="Settings" active={activeTab === 'Settings'} onClick={() => setActiveTab('Settings')} />
             </div>
@@ -298,7 +316,7 @@ function TimeOff() {
                                     <td className="p-4 font-semibold text-gray-800">{req.employeeName}</td>
                                     <td className="p-4 text-gray-700">{req.leaveType}</td>
                                     <td className="p-4 text-gray-700">{req.startDate} to {req.endDate}</td>
-                                    <td className="p-4"><span className={`text-xs font-bold py-1 px-2 rounded-full ${ req.status === 'Approved' ? 'bg-green-100 text-green-700' : req.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700' }`}>{req.status}</span></td>
+                                    <td className="p-4"><span className={`text-xs font-bold py-1 px-2 rounded-full ${ req.status === 'Approved' ? 'bg-green-100 text-green-700' : req.status.includes('Pending') ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700' }`}>{req.status}</span></td>
                                     <td className="p-4">
                                         <button onClick={() => handleRowClick(req)} className="p-2 hover:bg-gray-200 rounded-full"><Eye size={16} className="text-gray-600" /></button>
                                     </td>
@@ -343,7 +361,7 @@ function TimeOff() {
                         <thead><tr className="border-b border-gray-200"><th className="p-4 font-semibold text-gray-500 text-sm">Employee</th><th className="p-4 font-semibold text-gray-500 text-sm">Leave Type</th><th className="p-4 font-semibold text-gray-500 text-sm">Dates</th><th className="p-4 font-semibold text-gray-500 text-sm">Days</th><th className="p-4 font-semibold text-gray-500 text-sm">Actions</th></tr></thead>
                         <tbody>
                             {loading ? (<tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>) 
-                            : pendingTeamRequests.length === 0 ? (<tr><td colSpan="5" className="p-8 text-center text-gray-500">No pending requests from your team.</td></tr>)
+                            : pendingTeamRequests.length === 0 ? (<tr><td colSpan="5" className="p-8 text-center text-gray-500">No pending requests for you to approve.</td></tr>)
                             : pendingTeamRequests.map(req => (
                                 <tr key={req.id} className="border-b border-gray-100 last:border-b-0">
                                     <td className="p-4 font-semibold text-gray-800">{req.employeeName}</td>

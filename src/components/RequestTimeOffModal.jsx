@@ -182,12 +182,25 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
 
       const batch = writeBatch(db);
       const newRequestRef = doc(requestsRef);
-      
-      const status = (leaveType === 'Sick Day' && medicalCertificateUrl) ? 'Approved' : (manager ? 'Pending' : 'Approved');
 
+      const approvers = [];
+      if (substituteEmail) {
+        approvers.push({ email: substituteEmail, status: 'pending' });
+      }
+
+      let currentManager = manager;
+      while (currentManager) {
+        approvers.push({ email: currentManager.email, status: 'pending' });
+        currentManager = employees.find(e => e.email === currentManager.managerEmail);
+      }
+
+      const status = substituteEmail ? 'Pending Substitute Approval' : 'Pending Manager Approval';
+      
       batch.set(newRequestRef, { 
         leaveType, startDate, endDate, description, totalDays,
         status: status, 
+        approvers,
+        currentApprover: approvers[0]?.email,
         requestedAt: serverTimestamp(), userEmail: currentUser.email,
         medicalCertificateUrl: medicalCertificateUrl,
         substituteEmail: leaveType === 'Holiday' ? substituteEmail : null,
@@ -326,13 +339,9 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                         <h3 className="font-semibold text-blue-800 text-sm">Approval Information</h3>
                         {leaveType === 'Sick Day' ? (
                             <p className="text-xs text-blue-700 mt-1">Sick day requests with a medical certificate are automatically approved.</p>
-                        ) : manager ? (
-                            <p className="text-xs text-blue-700 mt-1">
-                                This request will be sent to <strong>{manager.name}</strong> for approval.
-                            </p>
                         ) : (
                             <p className="text-xs text-blue-700 mt-1">
-                                Since you do not have a manager assigned, this request will be <strong>automatically approved</strong>.
+                                This request will be sent to your substitute (if selected) and then up your management chain for approval.
                             </p>
                         )}
                     </div>
