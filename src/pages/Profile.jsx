@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { Edit2, DollarSign, Briefcase, User, Users, Home, Phone, Shield, Plane, Heart, Sun, FileText, Lock, Building, List, Flag, Mail, Clock, Calendar } from 'lucide-react';
+import { Edit2, DollarSign, Briefcase, User, Users, Home, Phone, Shield, Plus, journey, Plane, Heart, Sun, FileText, Lock, Building, List, Flag, Mail, Clock, Calendar } from 'lucide-react';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import OnboardingPlan from '../components/OnboardingPlan';
 import SkillsAndCerts from '../components/SkillsAndCerts';
@@ -61,7 +61,7 @@ function Profile() {
                   {activeTab === 'Job' && (
                     <div className="space-y-6">
                         <InfoSection title="Employment Details" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<Briefcase size={16} />} label="Position" value={employee.position} /><InfoField icon={<Users size={16} />} label="Department" value={employee.department} /><InfoField icon={<Briefcase size={16} />} label="Employment Type" value={employee.employmentType} /><InfoField icon={<Users size={16} />} label="Reports To" value={employee.managerEmail} /><InfoField icon={<FileText size={16}/>} label="Contract Type" value={employee.contractType} /><InfoField icon={<Calendar size={16}/>} label="Contract End Date" value={employee.contractEndDate} /><InfoField icon={<Clock size={16}/>} label="Weekly Hours" value={employee.weeklyHours} /><InfoField icon={<Home size={16}/>} label="Work Mode" value={employee.workMode} /></InfoSection>
-                        <InfoSection title="Compensation" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<DollarSign size={16} />} label="Monthly Gross Salary" value={employee.monthlyGrossSalary ? `${employee.monthlyGrossSalary} MAD` : 'N/A'} /><InfoField icon={<DollarSign size={16} />} label="Legacy Compensation" value={employee.compensation} /></InfoSection>
+                        <InfoSection title="Compensation" onEdit={() => setIsEditModalOpen(true)}><InfoField icon={<FileText size={16} />} label="Monthly Gross Salary" value={employee.monthlyGrossSalary ? `${employee.monthlyGrossSalary} MAD` : 'N/A'} /></InfoSection>
                     </div>
                   )}
                   {activeTab === 'Personal' && (
