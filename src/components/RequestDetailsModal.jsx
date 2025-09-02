@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { X, CheckCircle, XCircle, Send, Calendar, RotateCcw, Trash2, UploadCloud, FileText } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext'; 
+import { X, CheckCircle, XCircle, Send, Calendar, RotateCcw, Trash2, UploadCloud, FileText, AlertCircle, UserCheck } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 import useFileUpload from '../hooks/useFileUpload';
 
 
@@ -13,9 +13,14 @@ const HistoryItem = ({ icon, title, date, isLast, children }) => ( <div classNam
 function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedule }) {
   const [history, setHistory] = useState([]);
   const currentUser = auth.currentUser;
-  const { companyId } = useAppContext(); 
+  const { employees, companyId } = useAppContext();
   const { uploading, progress, error: uploadError, uploadFile } = useFileUpload();
   const [lateCertificate, setLateCertificate] = useState(null);
+
+  const substitute = useMemo(() => {
+    if (!request || !request.substituteEmail || !employees) return null;
+    return employees.find(e => e.email === request.substituteEmail);
+  }, [request, employees]);
 
 
   useEffect(() => {
@@ -70,9 +75,9 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
   const canReschedule = request.status === 'Approved' && new Date(request.startDate) > new Date();
   
   const today = new Date();
-  const twoDaysAfterEnd = new Date(request.endDate);
-  twoDaysAfterEnd.setDate(twoDaysAfterEnd.getDate() + 2);
-  const canUploadLate = request.leaveType === 'Sick Day' && !request.medicalCertificateUrl && today <= twoDaysAfterEnd && new Date(request.startDate) < today;
+  const fortyEightHoursAfterStart = new Date(request.startDate);
+  fortyEightHoursAfterStart.setHours(fortyEightHoursAfterStart.getHours() + 48);
+  const canUploadLate = isOwner && request.leaveType === 'Sick Day' && !request.medicalCertificateUrl && today < fortyEightHoursAfterStart;
 
 
   return (
@@ -93,6 +98,12 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
                     <DetailField label="Total Days" value={`${request.totalDays} day(s)`} />
                     <div><p className="text-sm text-gray-500">Status</p><span className={`text-sm font-bold py-1 px-3 rounded-full ${getStatusStyle(request.status)}`}>{request.status}</span></div>
                 </div>
+                 {request.leaveType === 'Sick Day' && !request.medicalCertificateUrl && (
+                  <div className="mt-4 border-t pt-4 flex items-center text-orange-600">
+                    <AlertCircle size={16} className="mr-2" />
+                    <span className="text-sm font-semibold">Document missing</span>
+                  </div>
+                )}
                 {request.description && ( <div className="mt-4 border-t pt-4"><DetailField label="Description" value={request.description} /></div> )}
             </div>
 
@@ -103,7 +114,7 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
                       <a href={request.medicalCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">View Document</a>
                   ) : (
                       <div>
-                          <p className="text-xs text-gray-500 mb-2">A document is required. You can upload it until {twoDaysAfterEnd.toLocaleDateString()}.</p>
+                          <p className="text-xs text-gray-500 mb-2">A document is required. You can upload it until {fortyEightHoursAfterStart.toLocaleDateString()}.</p>
                           <div className="flex items-center gap-2">
                               <input type="file" onChange={(e) => setLateCertificate(e.target.files[0])} className="w-full border p-1 rounded-md text-sm"/>
                               <button onClick={handleLateUpload} disabled={uploading || !lateCertificate} className="bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg text-sm disabled:bg-gray-400">
@@ -114,6 +125,18 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
                       </div>
                   )}
               </div>
+            )}
+            
+            {request.leaveType === 'Holiday' && substitute && (
+                <div className="p-4 border rounded-lg">
+                    <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2"><UserCheck size={16}/> Substitute Information</h3>
+                    <DetailField label="Substitute" value={substitute.name} />
+                    {request.substituteActions && (
+                        <div className="mt-4 border-t pt-4">
+                            <DetailField label="Actions for Substitute" value={request.substituteActions} />
+                        </div>
+                    )}
+                </div>
             )}
 
 

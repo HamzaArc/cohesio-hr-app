@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Plane, Heart, Sun, Trash2, Calendar, List, Filter, Settings, UserCheck, Check, XIcon, Eye } from 'lucide-react';
+import { Plus, Plane, Heart, Sun, Trash2, Calendar, List, Filter, Settings, UserCheck, Check, XIcon, Eye, DollarSign } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, orderBy, query, doc, updateDoc, deleteDoc, where, writeBatch, increment, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
@@ -12,7 +12,7 @@ import TimeOffSettings from '../components/TimeOffSettings';
 import RescheduleModal from '../components/RescheduleModal';
 
 const BalanceCard = ({ icon, title, balance, bgColor, iconColor }) => ( <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col items-start border border-gray-200"><div className={`p-2 rounded-lg mb-4 ${bgColor}`}>{React.cloneElement(icon, { className: `w-6 h-6 ${iconColor}` })}</div><p className="text-sm text-gray-500">{title}</p><p className="text-3xl font-bold text-gray-800">{balance}</p><p className="text-sm text-gray-500">Days Balance Today</p></div> );
-const MainTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{label}</button> );
+const MainTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover-text-gray-700' }`}>{label}</button> );
 
 function TimeOff() {
   const { employees, loading: employeesLoading, companyId, currentUser } = useAppContext();
@@ -159,6 +159,27 @@ function TimeOff() {
   const handleDepartmentToggle = (dept) => {
     setSelectedDepartments(prev => prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]);
   };
+  const undocumentedSickDays = useMemo(() => {
+    const fortyEightHoursAgo = new Date();
+    fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
+
+    return requestsWithNameAndDept.filter(req => {
+      const startDate = new Date(req.startDate);
+      return (
+        req.leaveType === 'Sick Day' &&
+        !req.medicalCertificateUrl &&
+        startDate < fortyEightHoursAgo
+      );
+    });
+  }, [requestsWithNameAndDept]);
+
+  const handleMarkAsAccounted = async (request) => {
+    if (!companyId) return;
+    const requestRef = doc(db, 'companies', companyId, 'timeOffRequests', request.id);
+    await updateDoc(requestRef, { accountedForInPayslip: true });
+    // Optional: Add a history log for this action
+    await addHistoryLog(request.id, 'Marked as accounted for in payslip');
+  };
 
   const isManager = myTeam.length > 0;
   const loading = employeesLoading || requestsLoading;
@@ -199,8 +220,62 @@ function TimeOff() {
                 <MainTab label="Requests" active={activeTab === 'Requests'} onClick={() => setActiveTab('Requests')} />
                 <MainTab label="Calendar" active={activeTab === 'Calendar'} onClick={() => setActiveTab('Calendar')} />
                 {isManager && <MainTab label="Team Approvals" active={activeTab === 'Approvals'} onClick={() => setActiveTab('Approvals')} />}
+                 {isManager && <MainTab label="Sick Days Without Documents" active={activeTab === 'Sick Days'} onClick={() => setActiveTab('Sick Days')} />}
                 <MainTab label="Settings" active={activeTab === 'Settings'} onClick={() => setActiveTab('Settings')} />
             </div>
+            {activeTab === 'Sick Days' && (
+              <div className="p-6">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="p-4 font-semibold text-gray-500 text-sm">Employee</th>
+                      <th className="p-4 font-semibold text-gray-500 text-sm">Dates</th>
+                      <th className="p-4 font-semibold text-gray-500 text-sm">Status</th>
+                      <th className="p-4 font-semibold text-gray-500 text-sm">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="4" className="p-4 text-center">Loading...</td>
+                      </tr>
+                    ) : undocumentedSickDays.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="p-8 text-center text-gray-500">
+                          No sick days with missing documents after 48h.
+                        </td>
+                      </tr>
+                    ) : (
+                      undocumentedSickDays.map(req => (
+                        <tr key={req.id} className="border-b border-gray-100 last:border-b-0">
+                          <td className="p-4 font-semibold text-gray-800">{req.employeeName}</td>
+                          <td className="p-4 text-gray-700">{req.startDate} to {req.endDate}</td>
+                          <td className="p-4">
+                            <span className="text-xs font-bold py-1 px-2 rounded-full bg-red-100 text-red-700">
+                              Sick day with no documents after 48h
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            {req.accountedForInPayslip ? (
+                              <span className="flex items-center text-xs font-bold text-green-700">
+                                <Check size={16} className="mr-1" /> Accounted for in Payslip
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleMarkAsAccounted(req)}
+                                className="flex items-center text-sm text-white bg-blue-600 hover:bg-blue-700 font-semibold py-1 px-2 rounded-lg"
+                              >
+                                <DollarSign size={16} className="mr-1" /> Mark as Accounted
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
         
             {activeTab === 'Requests' && (
                 <div className="p-6">

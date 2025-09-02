@@ -127,14 +127,10 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
         setError(error || 'Please select a valid date range.'); 
         return; 
     }
-     if (leaveType === 'Sick Day' && !medicalCertificate) {
-      setError('A medical certificate is required for sick day requests.');
-      return;
-    }
-    if (leaveType === 'Holiday' && !substituteEmail) {
+    if (leaveType === 'Holiday' && currentUserProfile.managerEmail && !substituteEmail) {
         setError('Please select a substitute.');
         return;
-      }
+    }
     setLoading(true);
     setError('');
     setSuggestedDates(null);
@@ -275,7 +271,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
 
             {leaveType === 'Sick Day' && (
               <div className="md:col-span-2">
-                <label htmlFor="medicalCertificate" className="block text-sm font-medium text-gray-700">Medical Certificate</label>
+                <label htmlFor="medicalCertificate" className="block text-sm font-medium text-gray-700">Medical Certificate (Optional)</label>
                 <div className="mt-1 flex items-center gap-2">
                     <input type="file" id="medicalCertificate" onChange={(e) => setMedicalCertificate(e.target.files[0])} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                     {uploading && <div className="text-sm">{Math.round(progress)}%</div>}
@@ -284,7 +280,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
               </div>
             )}
             
-            {leaveType === 'Holiday' && (
+            {leaveType === 'Holiday' && currentUserProfile && currentUserProfile.managerEmail && (
                 <>
                     <div className="md:col-span-2">
                         <label htmlFor="substituteEmail" className="block text-sm font-medium text-gray-700">Substitute</label>
