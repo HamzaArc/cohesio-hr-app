@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { Edit2, DollarSign, Briefcase, User, Users, Home, Phone, Shield, Plus, journey, Plane, Heart, Sun, FileText, Lock, Building, List, Flag, Mail, Clock, Calendar } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Edit2, Plus, DollarSign, ArrowUp, Briefcase, User, Users, Home, Phone, Shield, Plane, Calendar, Heart, Clock, Sun, FileText, Flag, Mail, Lock, Building, List } from 'lucide-react';
+import { db } from '../firebase';
+import { doc, onSnapshot, collection, query, where, orderBy } from 'firebase/firestore';
+import { useAppContext } from '../contexts/AppContext';
 import EditEmployeeModal from '../components/EditEmployeeModal';
+import AddJourneyEventModal from '../components/AddJourneyEventModal';
 import OnboardingPlan from '../components/OnboardingPlan';
 import SkillsAndCerts from '../components/SkillsAndCerts';
-import { useAppContext } from '../contexts/AppContext';
+import PrivateNotes from '../components/PrivateNotes';
 import PersonalDocumentsTab from '../components/PersonalDocumentsTab';
 import CompanyDocumentsTab from '../components/CompanyDocumentsTab';
-import PrivateNotes from '../components/PrivateNotes';
-import AddJourneyEventModal from '../components/AddJourneyEventModal';
 
 
-const ProfileTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`} > {label} </button> );
+const ProfileTab = ({ label, active, onClick }) => (
+  <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold whitespace-nowrap transition-colors ${active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+    {label}
+  </button>
+);
+
 const InfoSection = ({ title, children, onEdit }) => ( <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"><div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-gray-800">{title}</h3>{onEdit && <button onClick={onEdit} className="text-sm font-semibold text-blue-600 hover:underline">Edit</button>}</div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">{children}</div></div> );
 const InfoField = ({ icon, label, value }) => ( <div className="flex items-start"><div className="flex-shrink-0 w-6 text-gray-400 pt-0.5">{icon}</div><div><p className="text-xs text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value || 'N/A'}</p></div></div> );
 
@@ -20,8 +26,10 @@ function Profile() {
   const { companyId, currentUser } = useAppContext();
   const [activeTab, setActiveTab] = useState('Job');
   const [employee, setEmployee] = useState(null);
+  const [journey, setJourney] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isJourneyModalOpen, setIsJourneyModalOpen] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !companyId) { setLoading(false); return; }
@@ -37,6 +45,23 @@ function Profile() {
     });
     return () => unsubscribe();
   }, [currentUser, companyId]);
+  
+  useEffect(() => {
+    if (!employee || !companyId) return;
+    const journeyColRef = collection(db, 'companies', companyId, 'employees', employee.id, 'journey');
+    const q = query(journeyColRef, orderBy('date', 'desc'));
+    const unsubscribeJourney = onSnapshot(q, (snapshot) => { setJourney(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    return () => unsubscribeJourney();
+  }, [employee, companyId]);
+
+  const getJourneyIcon = (type) => {
+    switch (type) {
+      case 'Salary Change': return <DollarSign size={16} className="text-green-500" />;
+      case 'Promotion': return <ArrowUp size={16} className="text-purple-500" />;
+      case 'Title Change': case 'Department Change': return <Briefcase size={16} className="text-blue-500" />;
+      default: return <Plus size={16} className="text-gray-500" />;
+    }
+  };
 
   if (loading) return <div className="p-8">Loading Your Profile...</div>;
   if (!employee) return <div className="p-8">Could not find an employee profile linked to your account.</div>;
@@ -44,6 +69,8 @@ function Profile() {
   return (
     <>
       <EditEmployeeModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} employee={employee} onEmployeeUpdated={() => setIsEditModalOpen(false)} />
+      {employee && <AddJourneyEventModal isOpen={isJourneyModalOpen} onClose={() => setIsJourneyModalOpen(false)} onEventAdded={() => setIsJourneyModalOpen(false)} employeeId={employee.id} />}
+      
       <div className="p-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">My Profile</h1>
         <div className="flex flex-col lg:flex-row gap-8">

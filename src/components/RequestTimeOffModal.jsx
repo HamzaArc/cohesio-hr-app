@@ -64,13 +64,20 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
   const [loading, setLoading] = useState(false);
   const [suggestedDates, setSuggestedDates] = useState(null);
   const [medicalCertificate, setMedicalCertificate] = useState(null);
+  const [substituteEmail, setSubstituteEmail] = useState('');
+  const [substituteActions, setSubstituteActions] = useState('');
 
   const manager = useMemo(() => {
     if (!currentUserProfile || !employees) return null;
     return employees.find(e => e.email === currentUserProfile.managerEmail);
   }, [currentUserProfile, employees]);
   
-  const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance' };
+  const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance', 'Holiday': 'vacationBalance' };
+
+  const possibleSubstitutes = useMemo(() => {
+    if (!currentUserProfile || !employees) return [];
+    return employees.filter(e => e.department === currentUserProfile.department && e.managerEmail === currentUserProfile.managerEmail && e.email !== currentUser.email);
+    }, [currentUserProfile, employees, currentUser.email]);
 
   useEffect(() => {
     if (isOpen) {
@@ -124,6 +131,10 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
       setError('A medical certificate is required for sick day requests.');
       return;
     }
+    if (leaveType === 'Holiday' && !substituteEmail) {
+        setError('Please select a substitute.');
+        return;
+      }
     setLoading(true);
     setError('');
     setSuggestedDates(null);
@@ -183,6 +194,8 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
         status: status, 
         requestedAt: serverTimestamp(), userEmail: currentUser.email,
         medicalCertificateUrl: medicalCertificateUrl,
+        substituteEmail: leaveType === 'Holiday' ? substituteEmail : null,
+        substituteActions: leaveType === 'Holiday' ? substituteActions : null,
       });
       if (leaveType !== 'Personal (Unpaid)') {
         const employeeRef = doc(db, 'companies', companyId, 'employees', currentUserProfile.id);
@@ -212,6 +225,8 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
     setLeaveType('Vacation'); setStartDate(''); setEndDate('');
     setDescription(''); setTotalDays(0); setError(''); setSuggestedDates(null);
     setMedicalCertificate(null);
+    setSubstituteEmail('');
+    setSubstituteActions('');
     onClose();
   };
 
@@ -246,6 +261,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                 <option>Vacation</option>
                 <option>Sick Day</option>
                 <option>Personal (Unpaid)</option>
+                <option>Holiday</option>
               </select>
             </div>
             <div>
@@ -266,6 +282,22 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                 </div>
                  {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
               </div>
+            )}
+            
+            {leaveType === 'Holiday' && (
+                <>
+                    <div className="md:col-span-2">
+                        <label htmlFor="substituteEmail" className="block text-sm font-medium text-gray-700">Substitute</label>
+                        <select id="substituteEmail" value={substituteEmail} onChange={(e) => setSubstituteEmail(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                            <option value="">Select a substitute...</option>
+                            {possibleSubstitutes.map(s => <option key={s.id} value={s.email}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="md:col-span-2">
+                        <label htmlFor="substituteActions" className="block text-sm font-medium text-gray-700">Actions for Substitute (Optional)</label>
+                        <textarea id="substituteActions" value={substituteActions} onChange={(e) => setSubstituteActions(e.target.value)} rows="3" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
+                    </div>
+                </>
             )}
 
             <div className="md:col-span-2">
