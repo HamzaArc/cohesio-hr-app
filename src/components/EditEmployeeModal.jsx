@@ -101,7 +101,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
         cnssNumber: employee.cnssNumber || '', cnssEnrollmentDate: employee.cnssEnrollmentDate || '',
         amoScheme: employee.amoScheme || '', cimrEnrollment: employee.cimrEnrollment || false,
         cimrRate: employee.cimrRate || '', rib: employee.rib || '', bankBranch: employee.bankBranch || '',
-        vacationBalance: employee.vacationBalance ?? 15, sickBalance: employee.sickBalance ?? 5, personalBalance: employee.personalBalance ?? 3,
+        initialVacationBalance: employee.initialVacationBalance ?? 15, sickBalance: employee.sickBalance ?? 5, personalBalance: employee.personalBalance ?? 3,
         kids: employee.kids || [], parents: employee.parents || [],
       });
       setErrors({});
@@ -135,7 +135,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
     const { id, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [id]: type === 'checkbox' ? checked : value }));
   };
-  
+
   const handleFamilyChange = (type, index, field, value) => {
     const updatedFamily = [...formData[type]];
     updatedFamily[index][field] = value;
@@ -171,7 +171,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
         ...formData,
         monthlyGrossSalary: Number(formData.monthlyGrossSalary) || null,
         cimrRate: Number(formData.cimrRate) || null,
-        vacationBalance: Number(formData.vacationBalance) || 0,
+        initialVacationBalance: Number(formData.initialVacationBalance) || 0,
         sickBalance: Number(formData.sickBalance) || 0,
         personalBalance: Number(formData.personalBalance) || 0,
       });
@@ -208,7 +208,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <ValidatedInput id="name" label="Full Name" value={formData.name} onChange={handleChange} error={errors.name} required hint="As it should appear on official documents." />
                     <ValidatedInput id="email" label="Work Email" value={formData.email} onChange={handleChange} error={errors.email} type="email" required hint="This will be their login and primary contact."/>
                     <ValidatedInput id="position" label="Position / Title" value={formData.position} onChange={handleChange} error={errors.position} required />
-                    
+
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Employment Details</h3>
                     <ValidatedInput id="hireDate" label="Hire Date" value={formData.hireDate} onChange={handleChange} error={errors.hireDate} type="date" required />
                     <DatalistInput id="department" label="Department" value={formData.department} onChange={handleChange} options={departments} placeholder="Select or type new"/>
@@ -243,7 +243,7 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <ValidatedInput id="monthlyGrossSalary" label="Monthly Gross Salary (MAD)" value={formData.monthlyGrossSalary} onChange={handleChange} type="number" step="0.01" hint="For salaried employees." />
 
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Time Off Balances (Days)</h3>
-                    <ValidatedInput id="vacationBalance" label="Vacation" value={formData.vacationBalance} onChange={handleChange} type="number" />
+                    <ValidatedInput id="initialVacationBalance" label="Initial Vacation Balance" value={formData.initialVacationBalance} onChange={handleChange} type="number" />
                     <ValidatedInput id="sickBalance" label="Sick" value={formData.sickBalance} onChange={handleChange} type="number" />
                     <ValidatedInput id="personalBalance" label="Personal" value={formData.personalBalance} onChange={handleChange} type="number" />
                 </div>
@@ -267,11 +267,11 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <ValidatedInput id="emergencyContactName" label="Contact Name" value={formData.emergencyContactName} onChange={handleChange} />
                     <ValidatedInput id="emergencyContactRelationship" label="Relationship" value={formData.emergencyContactRelationship} onChange={handleChange} />
                     <ValidatedInput id="emergencyContactPhone" label="Contact Phone" value={formData.emergencyContactPhone} onChange={handleChange} type="tel" />
-                 
+
                     <div className="md:col-span-2">
                         <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Family Information</h3>
                     </div>
-                    
+
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Children</label>
                         {(formData.kids || []).map((kid, index) => (
@@ -302,12 +302,12 @@ function EditEmployeeModal({ isOpen, onClose, employee, onEmployeeUpdated }) {
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2">Identification</h3>
                     <ValidatedInput id="nationalId" label="National ID (CNIE)" value={formData.nationalId} onChange={handleChange} />
                     <ValidatedInput id="cnieExpiryDate" label="CNIE Expiry Date" value={formData.cnieExpiryDate} onChange={handleChange} type="date" />
-                    
+
                     <h3 className="md:col-span-3 text-lg font-semibold text-gray-700 border-b pb-2 mt-4">Social Security</h3>
                     <ValidatedInput id="cnssNumber" label="CNSS Number" value={formData.cnssNumber} onChange={handleChange} />
                     <ValidatedInput id="cnssEnrollmentDate" label="CNSS Enrollment Date" value={formData.cnssEnrollmentDate} onChange={handleChange} type="date" />
                     <ValidatedInput id="amoScheme" label="AMO Scheme" value={formData.amoScheme} onChange={handleChange} />
-                    
+
                     <div className="md:col-span-3 flex items-center gap-4 mt-2">
                         <input type="checkbox" id="cimrEnrollment" checked={formData.cimrEnrollment} onChange={handleChange} className="h-4 w-4 rounded" />
                         <label htmlFor="cimrEnrollment" className="block text-sm font-medium text-gray-700">CIMR Enrollment</label>

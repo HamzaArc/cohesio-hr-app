@@ -10,6 +10,7 @@ import RequestDetailsModal from '../components/RequestDetailsModal';
 import DayDrawer from '../components/DayDrawer';
 import TimeOffSettings from '../components/TimeOffSettings';
 import RescheduleModal from '../components/RescheduleModal';
+import { calculateVacationBalance } from '../utils/timeOffUtils';
 
 const BalanceCard = ({ icon, title, balance, bgColor, iconColor }) => ( <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col items-start border border-gray-200"><div className={`p-2 rounded-lg mb-4 ${bgColor}`}>{React.cloneElement(icon, { className: `w-6 h-6 ${iconColor}` })}</div><p className="text-sm text-gray-500">{title}</p><p className="text-3xl font-bold text-gray-800">{balance}</p><p className="text-sm text-gray-500">Days Balance Today</p></div> );
 const MainTab = ({ label, active, onClick }) => ( <button onClick={onClick} className={`py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover-text-gray-700' }`}>{label}</button> );
@@ -37,15 +38,15 @@ function TimeOff() {
   const [selectedLeaveType, setSelectedLeaveType] = useState('All');
 
   useEffect(() => {
-    if (!currentUser || !companyId) { 
-        setRequestsLoading(false); 
-        return; 
+    if (!currentUser || !companyId) {
+        setRequestsLoading(false);
+        return;
     }
     const policyRef = doc(db, 'companies', companyId, 'policies', 'timeOff');
     const holidaysColRef = collection(policyRef, 'holidays');
     const unsubPolicy = onSnapshot(policyRef, (docSnap) => { if (docSnap.exists()) setWeekends(docSnap.data().weekends || { sat: true, sun: true }); });
     const unsubHolidays = onSnapshot(holidaysColRef, (snapshot) => { setHolidays(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    
+
     const requestsQuery = query(collection(db, 'companies', companyId, 'timeOffRequests'), orderBy('requestedAt', 'desc'));
     const unsubRequests = onSnapshot(requestsQuery, (reqSnapshot) => {
       setAllRequests(reqSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
@@ -86,13 +87,13 @@ function TimeOff() {
       return true;
     });
   }, [requestsWithNameAndDept, scope, myTeam, currentUser]);
-  
+
   const uniqueDepartments = useMemo(() => [...new Set(employees.map(e => e.department).filter(Boolean))], [employees]);
 
   const filteredCalendarEvents = useMemo(() => {
     return requestsWithNameAndDept.filter(req => {
       const isApproved = req.status === 'Approved';
-      
+
       let scopeMatch = false;
       if (scope === 'All') scopeMatch = true;
       else if (scope === 'Mine' && req.userEmail === currentUser.email) scopeMatch = true;
@@ -100,14 +101,14 @@ function TimeOff() {
 
       const departmentMatch = selectedDepartments.length === 0 || selectedDepartments.includes(req.department);
       const leaveTypeMatch = selectedLeaveType === 'All' || req.leaveType === selectedLeaveType;
-      
+
       return isApproved && scopeMatch && departmentMatch && leaveTypeMatch;
     });
   }, [requestsWithNameAndDept, selectedDepartments, selectedLeaveType, scope, currentUser, myTeam]);
 
-  const addHistoryLog = async (requestId, action) => { 
+  const addHistoryLog = async (requestId, action) => {
       if (!companyId) return;
-      await addDoc(collection(db, 'companies', companyId, 'timeOffRequests', requestId, 'history'), { action, timestamp: serverTimestamp(), user: currentUser.email }); 
+      await addDoc(collection(db, 'companies', companyId, 'timeOffRequests', requestId, 'history'), { action, timestamp: serverTimestamp(), user: currentUser.email });
     };
   const handleRequestSubmitted = (newRequestId) => { setIsAddModalOpen(false); addHistoryLog(newRequestId, 'Created'); };
 
@@ -118,7 +119,7 @@ function TimeOff() {
 
     const requestRef = doc(db, 'companies', companyId, 'timeOffRequests', request.id);
     const employeeRef = doc(db, 'companies', companyId, 'employees', employee.id);
-    
+
     const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance' };
     const balanceField = balanceFieldMap[request.leaveType];
     const days = request.totalDays;
@@ -145,7 +146,7 @@ function TimeOff() {
         batch.update(requestRef, { status: 'Approved', currentApprover: null, approvers: newApprovers });
       }
     }
-    
+
     await batch.commit();
     await addHistoryLog(request.id, newStatus);
   };
@@ -201,25 +202,33 @@ function TimeOff() {
 
   const isManager = myTeam.length > 0;
   const loading = employeesLoading || requestsLoading;
+  const vacationBalance = useMemo(() => {
+    if (!currentUserProfile || !allRequests) return '...';
+    const userTimeOffRequests = allRequests.filter(
+      (request) => request.userEmail === currentUserProfile.email && request.status === 'Approved'
+    );
+    return calculateVacationBalance(currentUserProfile, userTimeOffRequests);
+  }, [currentUserProfile, allRequests]);
+
 
   return (
     <>
-      <RequestTimeOffModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
-        onrequestSubmitted={handleRequestSubmitted} 
-        currentUserProfile={currentUserProfile} 
-        myRequests={allRequests} 
-        weekends={weekends} 
-        holidays={holidays} 
-        allRequests={requestsWithNameAndDept} 
-        myTeam={myTeam} 
+      <RequestTimeOffModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onrequestSubmitted={handleRequestSubmitted}
+        currentUserProfile={currentUserProfile}
+        myRequests={allRequests}
+        weekends={weekends}
+        holidays={holidays}
+        allRequests={requestsWithNameAndDept}
+        myTeam={myTeam}
       />
       <RequestDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} request={selectedRequest} onWithdraw={handleWithdrawRequest} onReschedule={handleRescheduleClick} />
       <RescheduleModal isOpen={isRescheduleModalOpen} onClose={() => setIsRescheduleModalOpen(false)} request={selectedRequest} onRescheduled={() => setSelectedRequest(null)} />
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={`request from ${selectedRequest?.startDate}`} loading={isDeleting} />
       <DayDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} date={selectedDateForDrawer} events={eventsForDrawer} onViewRequest={handleViewRequestFromDrawer} />
-      
+
       <div className="p-8">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Time Off</h1>
@@ -227,12 +236,12 @@ function TimeOff() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <BalanceCard icon={<Plane />} title="Vacation" balance={currentUserProfile?.vacationBalance ?? '...'} bgColor="bg-blue-100" iconColor="text-blue-600" />
+            <BalanceCard icon={<Plane />} title="Vacation" balance={vacationBalance} bgColor="bg-blue-100" iconColor="text-blue-600" />
             {(isManager || pendingTeamRequests.length > 0) && <BalanceCard icon={<UserCheck />} title="Pending Approvals" balance={pendingTeamRequests.length} bgColor="bg-orange-100" iconColor="text-orange-600" />}
             <BalanceCard icon={<Heart />} title="Sick Days" balance={currentUserProfile?.sickBalance ?? '...'} bgColor="bg-green-100" iconColor="text-green-600" />
             <BalanceCard icon={<Sun />} title="Personal (Unpaid)" balance={currentUserProfile?.personalBalance ?? '...'} bgColor="bg-purple-100" iconColor="text-purple-600" />
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="border-b border-gray-200 px-2 flex flex-wrap">
                 <MainTab label="Requests" active={activeTab === 'Requests'} onClick={() => setActiveTab('Requests')} />
@@ -294,7 +303,7 @@ function TimeOff() {
                 </table>
               </div>
             )}
-        
+
             {activeTab === 'Requests' && (
                 <div className="p-6">
                     <div className="p-4 border-b flex justify-between items-center">
@@ -310,7 +319,7 @@ function TimeOff() {
                     <table className="w-full text-left">
                         <thead><tr className="border-b border-gray-200"><th className="p-4 font-semibold text-gray-500 text-sm">Employee</th><th className="p-4 font-semibold text-gray-500 text-sm">Leave Type</th><th className="p-4 font-semibold text-gray-500 text-sm">Dates</th><th className="p-4 font-semibold text-gray-500 text-sm">Status</th><th className="p-4 font-semibold text-gray-500 text-sm">Actions</th></tr></thead>
                         <tbody>
-                            {loading ? (<tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>) 
+                            {loading ? (<tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>)
                             : filteredRequestsForList.map(req => (
                                 <tr key={req.id} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
                                     <td className="p-4 font-semibold text-gray-800">{req.employeeName}</td>
@@ -360,7 +369,7 @@ function TimeOff() {
                     <table className="w-full text-left">
                         <thead><tr className="border-b border-gray-200"><th className="p-4 font-semibold text-gray-500 text-sm">Employee</th><th className="p-4 font-semibold text-gray-500 text-sm">Leave Type</th><th className="p-4 font-semibold text-gray-500 text-sm">Dates</th><th className="p-4 font-semibold text-gray-500 text-sm">Days</th><th className="p-4 font-semibold text-gray-500 text-sm">Actions</th></tr></thead>
                         <tbody>
-                            {loading ? (<tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>) 
+                            {loading ? (<tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>)
                             : pendingTeamRequests.length === 0 ? (<tr><td colSpan="5" className="p-8 text-center text-gray-500">No pending requests for you to approve.</td></tr>)
                             : pendingTeamRequests.map(req => (
                                 <tr key={req.id} className="border-b border-gray-100 last:border-b-0">

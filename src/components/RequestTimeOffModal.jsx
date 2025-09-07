@@ -4,6 +4,7 @@ import { collection, addDoc, serverTimestamp, doc, writeBatch, increment, query,
 import { X, AlertCircle, Users, ArrowRight, Info, Upload } from 'lucide-react';
 import { useAppContext } from '../contexts/AppContext';
 import useFileUpload from '../hooks/useFileUpload'; // Import the useFileUpload hook
+import { calculateVacationBalance } from '../utils/timeOffUtils';
 
 // --- Helper Functions --- (Assuming these are in a separate file or at the top)
 const isWeekend = (date, weekends = { sat: true, sun: true }) => {
@@ -71,7 +72,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
     if (!currentUserProfile || !employees) return null;
     return employees.find(e => e.email === currentUserProfile.managerEmail);
   }, [currentUserProfile, employees]);
-  
+
   const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance', 'Holiday': 'vacationBalance' };
 
   const possibleSubstitutes = useMemo(() => {
@@ -97,7 +98,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
       if (startDate && endDate) { setError('End date cannot be before the start date.'); }
     }
   }, [startDate, endDate, weekends, holidays]);
-  
+
     // New useEffect to handle sick day date validation
   useEffect(() => {
     if (leaveType === 'Sick Day' && startDate) {
@@ -123,9 +124,9 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (error || !startDate || !endDate || totalDays <= 0 || !companyId) { 
-        setError(error || 'Please select a valid date range.'); 
-        return; 
+    if (error || !startDate || !endDate || totalDays <= 0 || !companyId) {
+        setError(error || 'Please select a valid date range.');
+        return;
     }
     if (leaveType === 'Holiday' && currentUserProfile.managerEmail && !substituteEmail) {
         setError('Please select a substitute.');
@@ -139,26 +140,34 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
       if (!currentUser || !currentUserProfile) throw new Error("Could not find user profile.");
 
       const balanceField = balanceFieldMap[leaveType];
-      const currentBalance = currentUserProfile[balanceField] ?? 0;
+      let currentBalance = currentUserProfile[balanceField] ?? 0;
+
+      if (leaveType === 'Vacation') {
+        const userTimeOffRequests = allRequests.filter(
+          (request) => request.userEmail === currentUserProfile.email && request.status === 'Approved'
+        );
+        currentBalance = calculateVacationBalance(currentUserProfile, userTimeOffRequests);
+      }
+
 
       if (leaveType !== 'Personal (Unpaid)' && currentBalance < totalDays) {
         setError(`Insufficient balance. You only have ${currentBalance} day(s) remaining.`);
         setLoading(false);
         return;
       }
-      
+
       const requestsRef = collection(db, 'companies', companyId, 'timeOffRequests');
       const userExistingRequestsQuery = query(requestsRef, where("userEmail", "==", currentUser.email), where("status", "in", ["Pending", "Approved"]));
       const userRequestsSnapshot = await getDocs(userExistingRequestsQuery);
       const userExistingRequests = userRequestsSnapshot.docs.map(doc => doc.data());
-      
+
       const isOverlapping = userExistingRequests.some(req => new Date(startDate) <= new Date(req.endDate) && new Date(endDate) >= new Date(req.startDate));
 
       if (isOverlapping) {
           setError("You already have a request that overlaps with these dates.");
           let nextStart = new Date(startDate);
           const duration = (new Date(endDate) - new Date(startDate));
-          
+
           while(true) {
               nextStart.setDate(nextStart.getDate() + 1);
               let nextEnd = new Date(nextStart.getTime() + duration);
@@ -195,10 +204,10 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
       }
 
       const status = substituteEmail ? 'Pending Substitute Approval' : 'Pending Manager Approval';
-      
-      batch.set(newRequestRef, { 
+
+      batch.set(newRequestRef, {
         leaveType, startDate, endDate, description, totalDays,
-        status: status, 
+        status: status,
         approvers,
         currentApprover: approvers[0]?.email,
         requestedAt: serverTimestamp(), userEmail: currentUser.email,
@@ -245,13 +254,21 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    return allRequests.filter(req => 
+    return allRequests.filter(req =>
       req.status === 'Approved' &&
       teamEmails.has(req.userEmail) &&
       start <= new Date(req.endDate) &&
       end >= new Date(req.startDate)
     );
   }, [myTeam, allRequests, startDate, endDate]);
+
+  const vacationBalance = useMemo(() => {
+    if (!currentUserProfile || !allRequests) return '...';
+    const userTimeOffRequests = allRequests.filter(
+      (request) => request.userEmail === currentUserProfile.email && request.status === 'Approved'
+    );
+    return calculateVacationBalance(currentUserProfile, userTimeOffRequests);
+  }, [currentUserProfile, allRequests]);
 
   if (!isOpen) return null;
 
@@ -292,7 +309,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                  {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
               </div>
             )}
-            
+
             {leaveType === 'Holiday' && currentUserProfile && currentUserProfile.managerEmail && (
                 <>
                     <div className="md:col-span-2">
@@ -313,12 +330,12 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description (Optional)</label>
               <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows="2" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
             </div>
-            
+
             <div className="md:col-span-2 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
               <h3 className="font-semibold text-gray-800 text-sm">Summary</h3>
               <div className="flex justify-between items-center text-sm">
                 <p className="text-gray-600">Current Balance</p>
-                <p className="font-medium text-gray-800">{currentUserProfile?.[balanceFieldMap[leaveType]] ?? 0} days</p>
+                <p className="font-medium text-gray-800">{leaveType === 'Vacation' ? vacationBalance : (currentUserProfile?.[balanceFieldMap[leaveType]] ?? 0)} days</p>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <p className="text-gray-600">Days Requested</p>
@@ -327,7 +344,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
               <div className="flex justify-between items-center text-base border-t pt-3 mt-2">
                 <p className="font-semibold text-gray-800">Remaining Balance</p>
                 <p className="font-bold text-blue-600">
-                  {leaveType !== 'Personal (Unpaid)' ? (currentUserProfile?.[balanceFieldMap[leaveType]] ?? 0) - totalDays : 'N/A'} days
+                  {leaveType !== 'Personal (Unpaid)' ? (leaveType === 'Vacation' ? vacationBalance - totalDays : (currentUserProfile?.[balanceFieldMap[leaveType]] ?? 0) - totalDays) : 'N/A'} days
                 </p>
               </div>
             </div>
@@ -360,7 +377,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                 </div>
             )}
           </div>
-          
+
           {error && <p className="text-red-500 text-sm mt-4 flex items-center"><AlertCircle size={16} className="mr-2"/>{error}</p>}
 
           {suggestedDates && (
