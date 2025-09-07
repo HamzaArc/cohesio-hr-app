@@ -111,12 +111,12 @@ function ClockInClockOut() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser || !companyId) return;
+    if (!currentUser || !companyId || !currentUserProfile) return;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const clockEventsRef = collection(db, 'companies', companyId, 'employees', currentUser.uid, 'clockEvents');
+    const clockEventsRef = collection(db, 'companies', companyId, 'employees', currentUserProfile.id, 'clockEvents');
     const q = query(
       clockEventsRef,
       where('timestamp', '>=', today),
@@ -144,28 +144,28 @@ function ClockInClockOut() {
     });
 
     return () => unsubscribe();
-  }, [currentUser, companyId]);
+  }, [currentUser, companyId, currentUserProfile]);
   
   // --- New useEffect to fetch team data ---
   useEffect(() => {
     if (activeTab === 'Manager View' && myTeam.length > 0 && companyId) {
         setLoadingTeamData(true);
         const fetchTeamData = async () => {
-            const teamMemberUids = myTeam.map(member => member.uid).filter(Boolean);
-            if (teamMemberUids.length === 0) {
+            const teamMemberIds = myTeam.map(member => member.id).filter(Boolean);
+            if (teamMemberIds.length === 0) {
                 setTeamClockEvents([]);
                 setLoadingTeamData(false);
                 return;
             }
             
             let allEvents = [];
-            for (const uid of teamMemberUids) {
-                const clockEventsRef = collection(db, 'companies', companyId, 'employees', uid, 'clockEvents');
+            for (const id of teamMemberIds) {
+                const clockEventsRef = collection(db, 'companies', companyId, 'employees', id, 'clockEvents');
                 const q = query(clockEventsRef, orderBy('timestamp', 'desc'));
                 const snapshot = await getDocs(q);
                 const memberEvents = snapshot.docs.map(doc => ({
                     id: doc.id,
-                    employeeUid: uid,
+                    employeeId: id,
                     ...doc.data()
                 }));
                 allEvents = [...allEvents, ...memberEvents];
@@ -178,9 +178,9 @@ function ClockInClockOut() {
   }, [activeTab, myTeam, companyId]);
 
   const handleClockIn = async () => {
-    if (!currentUser || !companyId) return;
+    if (!currentUser || !companyId || !currentUserProfile) return;
     setLoading(true);
-    const clockEventsRef = collection(db, 'companies', companyId, 'employees', currentUser.uid, 'clockEvents');
+    const clockEventsRef = collection(db, 'companies', companyId, 'employees', currentUserProfile.id, 'clockEvents');
     await addDoc(clockEventsRef, {
       type: 'clock-in',
       timestamp: serverTimestamp(),
@@ -189,10 +189,10 @@ function ClockInClockOut() {
   };
 
   const handleClockOut = async () => {
-    if (!currentUser || !companyId ) return;
+    if (!currentUser || !companyId || !currentUserProfile) return;
     setLoading(true);
 
-    const clockEventsRef = collection(db, 'companies', companyId, 'employees', currentUser.uid, 'clockEvents');
+    const clockEventsRef = collection(db, 'companies', companyId, 'employees', currentUserProfile.id, 'clockEvents');
     await addDoc(clockEventsRef, {
       type: 'clock-out',
       timestamp: serverTimestamp(),
@@ -202,7 +202,7 @@ function ClockInClockOut() {
   
     const selectedEmployeeEntries = useMemo(() => {
         if (!selectedEmployee) return [];
-        return teamClockEvents.filter(e => e.employeeUid === selectedEmployee.uid);
+        return teamClockEvents.filter(e => e.employeeId === selectedEmployee.id);
     }, [teamClockEvents, selectedEmployee]);
 
     const entriesForSelectedDate = useMemo(() => {
@@ -212,9 +212,9 @@ function ClockInClockOut() {
             date1.getMonth() === date2.getMonth() &&
             date1.getDate() === date2.getDate();
 
-        return selectedEmployeeEntries.filter(e => isSameDay(e.timestamp?.toDate(), selectedDate))
+        return selectedEmployeeEntries.filter(e => e.timestamp && isSameDay(e.timestamp.toDate(), selectedDate))
             .sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
-    }, [selectedEmployeeEntries, selectedDate, selectedEmployee]);
+    }, [selectedEmployeeEntries, selectedDate]);
 
 
   const TabButton = ({ label, icon: Icon }) => (
