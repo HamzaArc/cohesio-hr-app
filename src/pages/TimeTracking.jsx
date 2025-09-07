@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Trash, Briefcase, Clock, ChevronLeft, ChevronRight, Send, UserCheck } from 'lucide-react';
+import { Plus, Edit, Trash, Briefcase, Clock, ChevronLeft, ChevronRight, Send, UserCheck, CheckCircle } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, orderBy, query, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import EnterHoursModal from '../components/EnterHoursModal';
 import EditHoursModal from '../components/EditHoursModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import AddProjectModal from '../components/AddProjectModal';
+import StatCard from '../components/StatCard';
 
 const TimeTrackingTab = ({ label, icon, active, onClick }) => ( <button onClick={onClick} className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold transition-colors ${ active ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700' }`}>{icon}{label}</button> );
 const getStartOfWeek = (date) => {
@@ -193,7 +194,7 @@ function TimeTracking() {
         default:
             const isWeekSubmittable = Array.from(weekEntries.values()).flat().some(e => e.status === 'Draft');
             return (
-                <div>
+                <div className="time-clock-log">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                             <button onClick={goToPreviousWeek} className="p-2 rounded-full hover:bg-gray-100"><ChevronLeft size={20} /></button>
@@ -201,7 +202,7 @@ function TimeTracking() {
                             <h3 className="font-semibold text-gray-800">{weekDays[0].toLocaleDateString()} - {weekDays[6].toLocaleDateString()}</h3>
                         </div>
                         <div className="flex items-center gap-4">
-                            <div className="text-right">
+                            <div className="text-right time-clock-kpis">
                                 <p className="text-sm text-gray-500">Week Total</p>
                                 <p className="font-bold text-xl text-gray-800">{weekTotal.toFixed(2)}</p>
                             </div>
@@ -242,12 +243,12 @@ function TimeTracking() {
       <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={`time entry for ${selectedEntry?.date}`} loading={isDeleting} />
 
       <div className="p-8">
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex justify-between items-center mb-8 time-clock-header">
           <h1 className="text-3xl font-bold text-gray-800">Time Tracking</h1>
         </header>
         
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="border-b border-gray-200 px-2 flex">
+            <div className="border-b border-gray-200 px-2 flex time-clock-main">
                 <TimeTrackingTab label="My Timesheet" icon={<Clock size={16}/>} active={activeTab === 'My Timesheet'} onClick={() => setActiveTab('My Timesheet')} />
                 <TimeTrackingTab label="Team Timesheets" icon={<UserCheck size={16}/>} active={activeTab === 'Team Timesheets'} onClick={() => setActiveTab('Team Timesheets')} />
                 <TimeTrackingTab label="My Projects" icon={<Briefcase size={16}/>} active={activeTab === 'My Projects'} onClick={() => setActiveTab('My Projects')} />

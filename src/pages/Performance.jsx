@@ -103,9 +103,9 @@ function Performance() {
             <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={`the performance cycle for ${employees.find(e => e.id === selectedCycle?.employeeId)?.name}`} loading={isDeleting} />
 
             <div className="p-8">
-                <header className="flex justify-between items-center mb-8">
+                <header className="flex justify-between items-center mb-8 performance-header">
                     <h1 className="text-3xl font-bold text-gray-800">Performance</h1>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
+                    <button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm performance-actions">
                         <Plus size={20} className="mr-2" />
                         New Performance Cycle
                     </button>
@@ -116,7 +116,7 @@ function Performance() {
                         <PerformanceTab label="My Performance" active={activeTab === 'My Performance'} onClick={() => setActiveTab('My Performance')} />
                         {myTeam.length > 0 && <PerformanceTab label="Team Performance" active={activeTab === 'Team Performance'} onClick={() => setActiveTab('Team Performance')} />}
                     </div>
-                    <div className="p-6">
+                    <div className="p-6 performance-table">
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b border-gray-200">

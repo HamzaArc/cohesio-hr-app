@@ -123,9 +123,9 @@ function Payroll() {
           case 'Run Payroll':
           default:
             return (
-                <div>
-                    <div className="p-6 bg-blue-50 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
-                        <div>
+               <div className="run-payroll-section">
+                    <div className="p-6 bg-blue-50 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4 ">
+                       <div>
                             <h2 className="text-xl font-bold text-gray-800">Run Payroll for {nextPayrollPeriod.label}</h2>
                             <p className="text-sm text-gray-600">Finalize this month's payroll to generate payslips for your employees.</p>
                         </div>
@@ -144,7 +144,7 @@ function Payroll() {
                             </button>
                         </div>
                     </div>
-                    <div className="p-6">
+                    <div className="p-6 payroll-history">
                         <h3 className="font-bold text-lg text-gray-700 mb-4">Payroll History</h3>
                         {payrollRuns.length === 0 ? ( <p className="text-center text-gray-500 py-8">No previous payroll runs found.</p> )
                         : (
@@ -192,7 +192,7 @@ function Payroll() {
         existingRuns={payrollRuns}
       />
       <div className="p-8">
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex justify-between items-center mb-8 payroll-header">
           <h1 className="text-3xl font-bold text-gray-800">Payroll</h1>
         </header>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -200,7 +200,7 @@ function Payroll() {
               <PayrollTab label="Run Payroll" active={activeTab === 'Run Payroll'} onClick={() => setActiveTab('Run Payroll')} />
               <PayrollTab label="Settings" active={activeTab === 'Settings'} onClick={() => setActiveTab('Settings')} />
           </div>
-          {renderContent()}
+          <div className="payroll-content">{renderContent()}</div>
         </div>
       </div>
     </>

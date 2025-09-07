@@ -139,9 +139,9 @@ function People() {
       <InviteEmployeeModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} onInvitationSent={() => setIsInviteModalOpen(false)} />
 
       <div className="p-8">
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex justify-between items-center mb-8 people-header">
           <h1 className="text-3xl font-bold text-gray-800">People Directory</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 people-actions">
             <button onClick={() => setIsInviteModalOpen(true)} className="bg-white text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 border border-gray-300 flex items-center shadow-sm">
                 <Mail size={16} className="mr-2"/>Invite Employee
             </button>
@@ -151,14 +151,14 @@ function People() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 people-stats">
             <StatCard icon={<Users size={24}/>} title="Total Employees" value={allEmployees.length} />
             <StatCard icon={<UserPlus size={24}/>} title="New Hires This Month" value={newHiresThisMonth} />
             <StatCard icon={<Users size={24}/>} title="Departments" value={new Set(allEmployees.map(e => e.department)).size} />
             <StatCard icon={<Users size={24}/>} title="Avg. Tenure" value="2.1 years" />
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 people-table">
             <div className="border-b border-gray-200 px-2 flex">
                 <PeopleTab label="Directory" icon={<Users size={16} />} active={activeTab === 'Directory'} onClick={() => setActiveTab('Directory')} />
                 <PeopleTab label="Org Chart" icon={<Share2 size={16} />} active={activeTab === 'Org Chart'} onClick={() => setActiveTab('Org Chart')} />

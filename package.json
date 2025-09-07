@@ -14,6 +14,8 @@
     "dagre": "^0.8.5",
     "date-fns": "^4.1.0",
     "firebase": "^12.0.0",
+    "intro.js": "^8.3.2",
+    "intro.js-react": "^1.0.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.536.0",

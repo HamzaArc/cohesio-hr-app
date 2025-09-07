@@ -36,11 +36,11 @@ const ToggleSwitch = ({ enabled }) => (
 function Settings() {
   return (
     <div className="p-8">
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex justify-between items-center mb-8 settings-header">
         <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
       </header>
       
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto settings-sections">
         <SettingsSection icon={<User />} title="Profile Settings">
             <SettingItem 
                 label="Public Profile" 

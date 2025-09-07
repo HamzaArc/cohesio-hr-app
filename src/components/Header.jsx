@@ -1,9 +1,11 @@
-import React from 'react';
-import { Search, Bell, Calendar, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Bell, Calendar, ChevronDown, HelpCircle } from 'lucide-react';
 import { auth } from '../firebase';
+import './Help.css'; // Import the new CSS
 
-function Header() {
+function Header({ onHelpClick, onTourClick }) {
   const user = auth.currentUser;
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
 
   return (
     // The header now has a subtle shadow and spans the full width.
@@ -28,6 +30,21 @@ function Header() {
           <Bell size={20} className="text-gray-600" />
         </button>
         
+        <div className="relative">
+            <button 
+                onClick={() => setHelpMenuOpen(!helpMenuOpen)} 
+                className="bg-highlight text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-colors flex items-center shadow-sm help-button-pulse"
+            >
+                <HelpCircle size={16} className="mr-2"/> Get Help
+            </button>
+            {helpMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-20">
+                    <button onClick={() => { onHelpClick(); setHelpMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Page Overview</button>
+                    <button onClick={() => { onTourClick(); setHelpMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Start Feature Tour</button>
+                </div>
+            )}
+        </div>
+
         <div className="h-8 border-l border-gray-200"></div>
 
         <div className="flex items-center gap-3">

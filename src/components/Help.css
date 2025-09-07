@@ -1,0 +1,16 @@
+/* src/components/Help.css */
+@keyframes pulse-animation {
+  0% {
+    box-shadow: 0 0 0 0 rgba(91, 192, 190, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(91, 192, 190, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 192, 190, 0);
+  }
+}
+
+.help-button-pulse {
+  animation: pulse-animation 2s infinite;
+}

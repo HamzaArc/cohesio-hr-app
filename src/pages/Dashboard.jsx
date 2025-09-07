@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { useAppContext } from '../contexts/AppContext';
 import { Plus, Users, Calendar, Gift, Briefcase, Check, XIcon } from 'lucide-react';
 
+
 function Dashboard() {
   const { employees, companyId, currentUser } = useAppContext();
-  const [timeOffRequests, setTimeOffRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [timeOffRequests, setTimeOffRequests] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
 
   const currentUserProfile = useMemo(() => {
     return employees.find(e => e.email === currentUser?.email);
@@ -19,7 +21,8 @@ function Dashboard() {
     return employees.filter(e => e.managerEmail === currentUserProfile.email);
   }, [employees, currentUserProfile]);
 
-  useEffect(() => {
+
+  React.useEffect(() => {
     if (!companyId) {
       setLoading(false);
       return;
@@ -84,7 +87,7 @@ function Dashboard() {
 
   return (
     <div className="p-8">
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex justify-between items-center mb-8 ">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Good afternoon, {currentUserProfile?.name || 'Admin'}</h1>
           <p className="text-gray-500">Here's what's happening in your company today.</p>
@@ -98,7 +101,7 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {/* Action Items */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 action-items">
             <h2 className="font-bold text-lg text-gray-800 mb-4">Action Items</h2>
             {pendingApprovals.length > 0 ? (
               <ul className="divide-y divide-gray-100">
@@ -121,7 +124,7 @@ function Dashboard() {
           </div>
 
           {/* Who's Out */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 whos-out">
             <h2 className="font-bold text-lg text-gray-800 mb-4">Who's Out This Week</h2>
              {whoIsOut.length > 0 ? (
               <div className="grid grid-cols-2 gap-4">
@@ -143,7 +146,7 @@ function Dashboard() {
 
         {/* Upcoming Events */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 upcoming-events">
             <h2 className="font-bold text-lg text-gray-800 mb-4">Upcoming Events</h2>
             {upcomingEvents.length > 0 ? (
               <ul className="space-y-4">
