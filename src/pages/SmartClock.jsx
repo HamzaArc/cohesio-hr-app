@@ -125,8 +125,6 @@ const ManagerCalendar = ({ entries, onDayClick, selectedDate }) => {
                         if (cell.hasEntry) {
                             cellClasses.push('font-bold');
                         }
-                    } else if (cell.hasEntry) {
-                        cellClasses.push('bg-blue-500 text-white font-bold');
                     } else {
                         cellClasses.push('text-gray-700');
                     }
@@ -367,9 +365,9 @@ export default function SmartClock() {
         date1.getMonth() === date2.getMonth() &&
         date1.getDate() === date2.getDate();
 
-    return selectedEmployeeEntries.filter(e => isSameDay(e.timestamp?.toDate(), selectedDate))
+    return selectedEmployeeEntries.filter(e => e.timestamp?.toDate() && isSameDay(e.timestamp.toDate(), selectedDate))
         .sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
-  }, [selectedEmployeeEntries, selectedDate, selectedEmployee]);
+  }, [selectedEmployeeEntries, selectedDate]);
 
   const managerKPIs = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
