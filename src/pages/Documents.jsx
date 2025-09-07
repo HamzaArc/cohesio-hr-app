@@ -167,12 +167,12 @@ function Documents() {
       <RequestRevisionModal isOpen={isRevisionModalOpen} onClose={() => setIsRevisionModalOpen(false)} document={selectedDocument} onSubmitRevision={updateAcknowledgementStatus} />
 
       <div className="p-8">
-        <header className="flex justify-between items-center mb-8 documents-header">
+        <header data-tour-id="documents-header" className="flex justify-between items-center mb-8 documents-header">
           <h1 className="text-3xl font-bold text-gray-800">Document Hub</h1>
-          <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"><Plus size={20} className="mr-2" />Upload Document</button>
+          <button data-tour-id="upload-document-btn" onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"><Plus size={20} className="mr-2" />Upload Document</button>
         </header>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 document-stats">
+        <div data-tour-id="document-stats" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 document-stats">
             <StatCard icon={<AlertCircle size={24}/>} title="Action Required" value={stats.pending} />
             <StatCard icon={<Users size={24}/>} title="Company Documents" value={stats.total} />
             <StatCard icon={<Clock size={24}/>} title="Expiring Soon" value={stats.expiring} />
@@ -180,7 +180,7 @@ function Documents() {
         </div>
 
         {myPendingDocuments.length > 0 && (
-            <div className="mb-8">
+            <div data-tour-id="documents-table" className="mb-8">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 documents-table">My Pending Documents</h2>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
                     <table className="w-full text-left min-w-[600px]">

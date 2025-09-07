@@ -89,7 +89,7 @@ export default function MedicalFile() {
             <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} employeeName={selectedCase?.id} loading={isDeleting} />
 
             <div className="p-8">
-                <header className="flex justify-between items-center mb-8 medical-file-header">
+                <header data-tour-id="medical-file-header" className="flex justify-between items-center mb-8 medical-file-header">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800">Medical Case Tracking</h1>
                         <p className="text-gray-500">Unified view of sickness leave and CNSS/Mutuelle claims.</p>
@@ -105,7 +105,7 @@ export default function MedicalFile() {
                     </div>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 medical-file-stats">
+                <div data-tour-id="medical-file-stats" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 medical-file-stats">
                     <StatCard icon={<Briefcase size={24}/>} title="Total Cases" value={stats.total} />
                     <StatCard icon={<Clock size={24}/>} title="Pending HR Review" value={stats.pendingHR} />
                     <StatCard icon={<Send size={24}/>} title="Submitted to CNSS" value={stats.pendingCNSS} />
@@ -128,7 +128,7 @@ export default function MedicalFile() {
                 </div>
 
                 {loading ? <p>Loading cases...</p> : view === 'table' ? (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto medical-file-table">
+                    <div data-tour-id="medical-file-table" className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto medical-file-table">
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b bg-gray-50"><th className="p-4 font-semibold text-gray-500 text-sm">Case ID</th><th className="p-4 font-semibold text-gray-500 text-sm">Employee</th><th className="p-4 font-semibold text-gray-500 text-sm">Period</th><th className="p-4 font-semibold text-gray-500 text-sm">Days</th><th className="p-4 font-semibold text-gray-500 text-sm">Status</th><th className="p-4 font-semibold text-gray-500 text-sm">Actions</th></tr>

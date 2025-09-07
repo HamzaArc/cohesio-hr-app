@@ -73,7 +73,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
     return employees.find(e => e.email === currentUserProfile.managerEmail);
   }, [currentUserProfile, employees]);
 
-  const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance', 'Holiday': 'vacationBalance' };
+  const balanceFieldMap = { 'Vacation': 'vacationBalance', 'Sick Day': 'sickBalance', 'Personal (Unpaid)': 'personalBalance' };
 
   const possibleSubstitutes = useMemo(() => {
     if (!currentUserProfile || !employees) return [];
@@ -128,7 +128,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
         setError(error || 'Please select a valid date range.');
         return;
     }
-    if (leaveType === 'Holiday' && currentUserProfile.managerEmail && !substituteEmail) {
+    if (leaveType === 'Vacation' && currentUserProfile.managerEmail && !substituteEmail) {
         setError('Please select a substitute.');
         return;
     }
@@ -203,17 +203,26 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
         currentManager = employees.find(e => e.email === currentManager.managerEmail);
       }
 
-      const status = substituteEmail ? 'Pending Substitute Approval' : 'Pending Manager Approval';
+      let status;
+      let currentApprover;
+
+      if (approvers.length === 0) {
+        status = 'Approved';
+        currentApprover = null;
+      } else {
+        status = substituteEmail ? 'Pending Substitute Approval' : 'Pending Manager Approval';
+        currentApprover = approvers[0]?.email;
+      }
 
       batch.set(newRequestRef, {
         leaveType, startDate, endDate, description, totalDays,
-        status: status,
+        status,
         approvers,
-        currentApprover: approvers[0]?.email,
+        currentApprover,
         requestedAt: serverTimestamp(), userEmail: currentUser.email,
         medicalCertificateUrl: medicalCertificateUrl,
-        substituteEmail: leaveType === 'Holiday' ? substituteEmail : null,
-        substituteActions: leaveType === 'Holiday' ? substituteActions : null,
+        substituteEmail: leaveType === 'Vacation' ? substituteEmail : null,
+        substituteActions: leaveType === 'Vacation' ? substituteActions : null,
       });
       if (leaveType !== 'Personal (Unpaid)') {
         const employeeRef = doc(db, 'companies', companyId, 'employees', currentUserProfile.id);
@@ -287,7 +296,6 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
                 <option>Vacation</option>
                 <option>Sick Day</option>
                 <option>Personal (Unpaid)</option>
-                <option>Holiday</option>
               </select>
             </div>
             <div>
@@ -310,7 +318,7 @@ function RequestTimeOffModal({ isOpen, onClose, onrequestSubmitted, currentUserP
               </div>
             )}
 
-            {leaveType === 'Holiday' && currentUserProfile && currentUserProfile.managerEmail && (
+            {leaveType === 'Vacation' && currentUserProfile && currentUserProfile.managerEmail && (
                 <>
                     <div className="md:col-span-2">
                         <label htmlFor="substituteEmail" className="block text-sm font-medium text-gray-700">Substitute</label>

@@ -76,7 +76,7 @@ function TimeOff() {
   }, [allRequests, employees]);
 
   const pendingTeamRequests = useMemo(() => {
-    return requestsWithNameAndDept.filter(req => req.currentApprover === currentUser.email);
+    return requestsWithNameAndDept.filter(req => req.status.startsWith('Pending') && req.currentApprover === currentUser.email);
   }, [requestsWithNameAndDept, currentUser]);
 
   const filteredRequestsForList = useMemo(() => {
@@ -230,19 +230,19 @@ function TimeOff() {
       <DayDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} date={selectedDateForDrawer} events={eventsForDrawer} onViewRequest={handleViewRequestFromDrawer} />
 
       <div className="p-8">
-        <header className="flex justify-between items-center mb-8 time-off-header">
+        <header data-tour-id="time-off-header" className="flex justify-between items-center mb-8 time-off-header">
           <h1 className="text-3xl font-bold text-gray-800">Time Off</h1>
-          <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"><Plus size={20} className="mr-2" />Request Time Off</button>
+          <button data-tour-id="request-time-off-btn" onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"><Plus size={20} className="mr-2" />Request Time Off</button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 balance-cards">
+        <div data-tour-id="balance-cards" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 balance-cards">
             <BalanceCard icon={<Plane />} title="Vacation" balance={vacationBalance} bgColor="bg-blue-100" iconColor="text-blue-600" />
             {(isManager || pendingTeamRequests.length > 0) && <BalanceCard icon={<UserCheck />} title="Pending Approvals" balance={pendingTeamRequests.length} bgColor="bg-orange-100" iconColor="text-orange-600" />}
             <BalanceCard icon={<Heart />} title="Sick Days" balance={currentUserProfile?.sickBalance ?? '...'} bgColor="bg-green-100" iconColor="text-green-600" />
             <BalanceCard icon={<Sun />} title="Personal (Unpaid)" balance={currentUserProfile?.personalBalance ?? '...'} bgColor="bg-purple-100" iconColor="text-purple-600" />
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 time-off-tabs">
+        <div data-tour-id="time-off-tabs" className="bg-white rounded-lg shadow-sm border border-gray-200 time-off-tabs">
             <div className="border-b border-gray-200 px-2 flex flex-wrap">
                 <MainTab label="Requests" active={activeTab === 'Requests'} onClick={() => setActiveTab('Requests')} />
                 <MainTab label="Calendar" active={activeTab === 'Calendar'} onClick={() => setActiveTab('Calendar')} />

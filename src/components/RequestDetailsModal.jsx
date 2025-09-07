@@ -125,7 +125,7 @@ function RequestDetailsModal({ isOpen, onClose, request, onWithdraw, onReschedul
               </div>
             )}
             
-            {request.leaveType === 'Holiday' && substitute && (
+            {request.leaveType === 'Vacation' && substitute && (
                 <div className="p-4 border rounded-lg">
                     <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2"><UserCheck size={16}/> Substitute Information</h3>
                     <DetailField label="Substitute" value={substitute.name} />
