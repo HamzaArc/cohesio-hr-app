@@ -3,154 +3,143 @@ import { X, HelpCircle } from 'lucide-react';
 
 const helpContent = {
   'dashboard': {
-    title: 'Dashboard Help',
+    title: 'Dashboard Overview',
     content: (
       <>
-        <p>The dashboard gives you a high-level overview of your company's HR status.</p>
-        <h4 className="font-bold mt-2">Key Sections:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>Action Items:</b> Time-off requests that need your approval.</li>
-          <li><b>Who's Out:</b> A list of employees on leave this week.</li>
-          <li><b>Upcoming Events:</b> Work anniversaries and birthdays.</li>
+        <p className="mb-4">The dashboard is your command center, providing a real-time snapshot of the most important activities in your company.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Key Sections:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>Action Items:</b> This section is personalized for managers. It displays pending time-off requests from your direct reports that require your approval or denial.</li>
+          <li><b>Who's Out:</b> A weekly view of all employees who have approved leave. This helps in planning and resource allocation.</li>
+          <li><b>Upcoming Events:</b> Never miss a milestone. This area shows upcoming work anniversaries and birthdays within the next 30 days to help you foster a positive company culture.</li>
         </ul>
       </>
     ),
   },
-  'profile': {
-    title: 'My Profile Help',
-    content: (
-      <>
-        <p>This is your personal profile page. Here you can view and manage all your information stored in Cohesio.</p>
-        <h4 className="font-bold mt-2">Key Sections:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>Job & Personal:</b> View your employment details and personal contact information.</li>
-          <li><b>Time Off:</b> Check your current leave balances.</li>
-          <li><b>Documents:</b> Access personal documents uploaded by HR and company-wide documents you need to acknowledge.</li>
-          <li><b>Onboarding & Skills:</b> Track your onboarding progress and manage your skills and certifications.</li>
-        </ul>
-      </>
-    )
-  },
   'people': {
-    title: 'People Directory Help',
+    title: 'People Directory Overview',
     content: (
       <>
-        <p>This page allows you to manage all employee profiles in your organization.</p>
-        <h4 className="font-bold mt-2">Key Actions:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>Add Employee:</b> Manually add a new employee to the system.</li>
-          <li><b>Invite Employee:</b> Send an email invitation for a new employee to self-register.</li>
-          <li><b>Search:</b> Quickly find employees by name, position, or email.</li>
+        <p className="mb-4">This module is the heart of your employee database. It allows you to manage all employee profiles, view organizational structure, and onboard new team members.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Core Functionalities:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>Directory View:</b> Search, filter, and view a comprehensive list of all employees. Clicking on an employee's name takes you to their detailed profile.</li>
+          <li><b>Org Chart View:</b> An interactive, visual representation of your company's structure based on the "Reports To" field in employee profiles.</li>
+          <li><b>Adding Employees:</b> You can either use the **Add Employee** button for a detailed, multi-step form or the **Invite Employee** button to send a secure link for them to self-onboard.</li>
         </ul>
       </>
     ),
   },
   'payroll': {
-    title: 'Payroll Help',
+    title: 'Payroll Hub Overview',
     content: (
       <>
-        <p>The payroll module helps you manage and run payroll for your employees.</p>
-        <h4 className="font-bold mt-2">Key Actions:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>Run Payroll:</b> Start the payroll process for a specific month.</li>
-          <li><b>Payroll History:</b> View and access records of past payroll runs.</li>
-          <li><b>Settings:</b> Configure your company's payroll information.</li>
+        <p className="mb-4">The payroll module simplifies and automates the process of paying your employees accurately and on time.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Key Actions:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>Run Payroll:</b> The system automatically determines the next payroll period. Click "Start Payroll" to enter the worksheet where you can input variables like bonuses and deductions.</li>
+          <li><b>Payroll History:</b> All finalized payroll runs are stored here. You can view detailed records and download individual payslips from any past period.</li>
+          <li><b>Settings:</b> Configure your company's legal information (RC, CNSS, etc.) which will appear on official documents like payslips.</li>
         </ul>
       </>
     ),
   },
   'time-off': {
-    title: 'Time Off Help',
+    title: 'Time Off Management Overview',
     content: (
       <>
-        <p>Manage all aspects of employee leave and time off.</p>
-        <h4 className="font-bold mt-2">Key Features:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>Request Time Off:</b> Employees can submit their leave requests here.</li>
-          <li><b>Team Calendar:</b> A visual overview of who is out and when.</li>
-          <li><b>Approvals:</b> Managers can approve or deny pending time-off requests.</li>
+        <p className="mb-4">Manage all aspects of employee leave, from policy configuration to request approvals, ensuring transparency and compliance.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Key Features:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>Balances:</b> View your personal leave balances for vacation, sick days, and personal time. Managers will also see a summary of pending requests from their team.</li>
+          <li><b>Requests Tab:</b> A detailed log of your own, your team's, or the entire company's time-off requests.</li>
+          <li><b>Calendar Tab:</b> A visual, color-coded calendar showing who is out of the office. You can filter by department and leave type.</li>
+          <li><b>Approvals Tab (for Managers):</b> A dedicated workspace for managers to approve or deny pending leave requests from their direct reports.</li>
+          <li><b>Settings Tab:</b> Define company-wide weekends and add public holidays to ensure accurate leave calculation.</li>
         </ul>
       </>
     ),
   },
   'time-clock': {
-    title: 'Time Clock Help',
+    title: 'Time Clock Overview',
     content: (
       <>
-        <p>The Time Clock feature allows for accurate tracking of work hours.</p>
-        <h4 className="font-bold mt-2">Key Features:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>Clock In/Out:</b> Start and end your workday with a single click.</li>
-          <li><b>Breaks:</b> Log your breaks to ensure accurate time tracking.</li>
-          <li><b>Today's Log:</b> View all your clocking activities for the current day.</li>
-          <li><b>Manager View:</b> If you are a manager, you can view your team's time entries.</li>
+        <p className="mb-4">The Time Clock feature allows for accurate tracking of work hours, breaks, and attendance, with optional geofencing for on-site employees.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Key Features:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>Clock In/Out:</b> Start and end your workday with a single click. The system logs the precise time of each punch.</li>
+          <li><b>Breaks:</b> Log your breaks to ensure accurate time tracking for payroll and compliance.</li>
+          <li><b>Today's Log:</b> View all your clocking activities for the current day in a real-time list.</li>
+          <li><b>Manager View:</b> If you are a manager, you can switch to a team view to monitor your direct reports' attendance and time entries.</li>
         </ul>
       </>
     ),
   },
   'performance': {
-    title: 'Performance Help',
+    title: 'Performance Management Overview',
     content: (
       <>
-        <p>This module helps you manage performance reviews and development cycles.</p>
-        <h4 className="font-bold mt-2">Key Actions:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>New Performance Cycle:</b> Start a new review cycle for an employee.</li>
-          <li><b>View Cycles:</b> Click on a cycle to view objectives, add 1-on-1s, and complete reviews.</li>
-          <li><b>Team Performance:</b> Managers can view the performance cycles for all their direct reports.</li>
+        <p className="mb-4">This module helps you manage performance reviews, set objectives, and facilitate continuous development for your team members.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Key Actions:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>New Performance Cycle:</b> As a manager, you can initiate a new review cycle for an employee, typically spanning 6 months.</li>
+          <li><b>View Cycles:</b> Click into a cycle to manage its components. You can add objectives (OKRs), schedule 1-on-1 meetings, build a development plan, and complete the final review.</li>
+          <li><b>Team Performance:</b> The "Team Performance" tab gives managers an aggregated view of all ongoing cycles for their direct reports.</li>
         </ul>
       </>
     ),
   },
   'medical-file': {
-    title: 'Medical File Help',
+    title: 'Medical Case Tracking Overview',
     content: (
       <>
-        <p>Track and manage employee medical cases, such as sick leave and work accidents, and related claims.</p>
-        <h4 className="font-bold mt-2">Key Actions:</h4>
-        <ul className="list-disc list-inside">
-          <li><b>New Medical Case:</b> Create a new file to track an employee's sick leave, attaching necessary documents.</li>
-          <li><b>View Details:</b> Click a case to update its status, upload documents, and log claim numbers with CNSS or insurance.</li>
+        <p className="mb-4">Track and manage employee medical cases, such as sick leave and work accidents, and the related claims process with CNSS or private insurance.</p>
+        <h4 className="font-bold text-gray-800 mb-2">Key Actions:</h4>
+        <ul className="list-disc list-inside space-y-2">
+          <li><b>New Medical Case:</b> Create a new file to track an employee's sick leave. You can attach necessary documents like medical certificates.</li>
+          <li><b>Track Status:</b> Move cases through a clear pipeline (e.g., "HR Review", "Submitted to CNSS", "Approved") to monitor progress.</li>
+          <li><b>Manage Claims:</b> In the details of a case, you can log claim numbers with CNSS or your insurance provider to keep all information centralized.</li>
         </ul>
       </>
     )
   },
-  'documents': {
-    title: 'Document Hub Help',
+   documents: {
+    title: 'Document Hub Overview',
     content: (
         <>
-            <p>This is the central place for all company and employee documents.</p>
-            <h4 className="font-bold mt-2">Key Actions:</h4>
-            <ul className="list-disc list-inside">
-                <li><b>Upload Document:</b> Securely upload new documents and assign them to all or specific employees.</li>
-                <li><b>Acknowledge:</b> Review documents assigned to you and mark them as acknowledged.</li>
-                <li><b>Request Revision:</b> If a document has an error, you can request a revision from your manager.</li>
+            <p className="mb-4">This is the central repository for all company and employee documents. Securely store, share, and track acknowledgments for important files.</p>
+            <h4 className="font-bold text-gray-800 mb-2">Key Actions:</h4>
+            <ul className="list-disc list-inside space-y-2">
+                <li><b>Upload Document:</b> Administrators can upload new documents (e.g., policies, handbooks) and assign them to all or specific employees.</li>
+                <li><b>Acknowledge:</b> Review documents assigned to you and mark them as acknowledged with a single click. This creates a digital audit trail.</li>
+                <li><b>Request Revision:</b> If you notice an issue with a document, you can send a notification to your manager requesting a revision.</li>
+                <li><b>Track Status:</b> Administrators can click any document to see a detailed list of which employees have acknowledged it, who is pending, and who has requested a revision.</li>
             </ul>
         </>
     )
   },
-  'company': {
-    title: 'Company Settings Help',
+  company: {
+    title: 'Company Settings Overview',
     content: (
         <>
-            <p>This section allows administrators to manage company-wide information and settings.</p>
-            <h4 className="font-bold mt-2">Key Areas:</h4>
-            <ul className="list-disc list-inside">
-                <li><b>Company Profile:</b> Update legal and contact information for your company. This data is used in official documents like payslips.</li>
-                <li><b>Locations & Holidays:</b> Manage office locations and the public holiday calendar for time-off calculations.</li>
+            <p className="mb-4">This section allows administrators to manage company-wide information and settings that affect multiple modules across the platform.</p>
+            <h4 className="font-bold text-gray-800 mb-2">Key Areas:</h4>
+            <ul className="list-disc list-inside space-y-2">
+                <li><b>Company Profile:</b> Update legal and contact information for your company. This data is used in official documents like payslips and work certificates.</li>
+                <li><b>Locations & Holidays:</b> Manage office locations and the public holiday calendar. The holiday calendar is automatically used for accurate day counting in the Time Off module.</li>
             </ul>
         </>
     )
   },
-  'settings': {
-    title: 'Settings Help',
+  settings: {
+    title: 'Personal Settings Overview',
     content: (
         <>
-            <p>Manage your personal account settings.</p>
-            <h4 className="font-bold mt-2">Key Actions:</h4>
-            <ul className="list-disc list-inside">
-                <li><b>Profile Settings:</b> Change your password.</li>
-                <li><b>Notifications:</b> Configure how you receive alerts and updates from the system.</li>
+            <p className="mb-4">Manage your personal account settings and preferences.</p>
+            <h4 className="font-bold text-gray-800 mb-2">Key Actions:</h4>
+            <ul className="list-disc list-inside space-y-2">
+                <li><b>Profile Settings:</b> This is where you can change your login password to keep your account secure.</li>
+                <li><b>Notifications:</b> Configure how you receive alerts and updates from the system, such as email notifications for pending approvals or new document assignments.</li>
             </ul>
         </>
     )
@@ -164,16 +153,16 @@ const Help = ({ page, isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-            <HelpCircle className="mr-2" /> {title || 'Help'}
+            <HelpCircle className="mr-3 text-blue-600" /> {title || 'Help'}
           </h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
             <X size={24} />
           </button>
         </div>
-        <div className="text-gray-700">{content || <p>Help content for this page is not yet available.</p>}</div>
+        <div className="text-gray-700 max-h-[60vh] overflow-y-auto pr-4">{content || <p>Help content for this page is not yet available.</p>}</div>
       </div>
     </div>
   );

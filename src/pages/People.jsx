@@ -73,7 +73,7 @@ function People() {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div data-tour-id="people-search-bar" className="flex justify-between items-center mb-6">
                 <div className="relative w-full max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input 
@@ -139,26 +139,26 @@ function People() {
       <InviteEmployeeModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} onInvitationSent={() => setIsInviteModalOpen(false)} />
 
       <div className="p-8">
-        <header className="flex justify-between items-center mb-8 people-header">
+        <header data-tour-id="people-header" className="flex justify-between items-center mb-8 people-header">
           <h1 className="text-3xl font-bold text-gray-800">People Directory</h1>
           <div className="flex gap-2 people-actions">
-            <button onClick={() => setIsInviteModalOpen(true)} className="bg-white text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 border border-gray-300 flex items-center shadow-sm">
+            <button data-tour-id="invite-employee-btn" onClick={() => setIsInviteModalOpen(true)} className="bg-white text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 border border-gray-300 flex items-center shadow-sm">
                 <Mail size={16} className="mr-2"/>Invite Employee
             </button>
-            <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
+            <button data-tour-id="add-employee-btn" onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm">
                 <Plus size={20} className="mr-2" />Add Employee
             </button>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 people-stats">
+        <div data-tour-id="people-stats" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 people-stats">
             <StatCard icon={<Users size={24}/>} title="Total Employees" value={allEmployees.length} />
             <StatCard icon={<UserPlus size={24}/>} title="New Hires This Month" value={newHiresThisMonth} />
             <StatCard icon={<Users size={24}/>} title="Departments" value={new Set(allEmployees.map(e => e.department)).size} />
             <StatCard icon={<Users size={24}/>} title="Avg. Tenure" value="2.1 years" />
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 people-table">
+        <div data-tour-id="people-table" className="bg-white rounded-lg shadow-sm border border-gray-200 people-table">
             <div className="border-b border-gray-200 px-2 flex">
                 <PeopleTab label="Directory" icon={<Users size={16} />} active={activeTab === 'Directory'} onClick={() => setActiveTab('Directory')} />
                 <PeopleTab label="Org Chart" icon={<Share2 size={16} />} active={activeTab === 'Org Chart'} onClick={() => setActiveTab('Org Chart')} />

@@ -354,7 +354,7 @@ export default function SmartClock() {
   return (
     <div className="p-8 bg-gray-50 min-h-full">
       <div className="w-full">
-        <header className="mb-8"><h1 className="text-3xl font-bold text-gray-800">Time Clock</h1></header>
+        <header data-tour-id="time-clock-header" className="mb-8"><h1 className="text-3xl font-bold text-gray-800">Time Clock</h1></header>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="border-b border-gray-200 px-2 flex">
                 <TabButton label="My Time Clock" icon={Clock} />
@@ -362,12 +362,12 @@ export default function SmartClock() {
             </div>
             {activeTab === 'My Time Clock' ? (
                 <main className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div data-tour-id="time-clock-kpis" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <StatCard icon={<Clock size={24}/>} title="Total Hours This Week" value={`${weeklyHours.toFixed(1)}h`} subtext="Based on today's punches." />
                         <StatCard icon={<CheckCircle size={24}/>} title="On-Time Streak" value={`${onTimeStreak} day(s)`} subtext="Consecutive on-time arrivals." />
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <section className="lg:col-span-2">
+                        <section data-tour-id="time-clock-main" className="lg:col-span-2">
                             <div className="rounded-2xl border bg-white p-6 shadow-sm">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -402,7 +402,7 @@ export default function SmartClock() {
                                 </div>
                             </div>
                         </section>
-                        <aside className="lg:col-span-1">
+                        <aside data-tour-id="time-clock-log" className="lg:col-span-1">
                             <div className="rounded-2xl border bg-white p-6 shadow-sm h-full">
                                 <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800"><History size={18}/> Today's Log</h3>
                                 <div className="mt-3 divide-y max-h-96 overflow-y-auto">

@@ -8,9 +8,7 @@ function Header({ onHelpClick, onTourClick }) {
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
 
   return (
-    // The header now has a subtle shadow and spans the full width.
     <header className="bg-white h-16 flex items-center justify-between px-8 border-b border-gray-200 shadow-sm z-10 relative">
-      {/* Left Side: Logo and Title */}
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 bg-[#4A1D4A] rounded-md flex items-center justify-center font-bold text-white">
             C
@@ -18,7 +16,6 @@ function Header({ onHelpClick, onTourClick }) {
         <h1 className="text-xl font-bold text-gray-800">Cohesio</h1>
       </div>
 
-      {/* Right Side: Actions and User Profile */}
       <div className="flex items-center gap-6">
         <button className="p-2 rounded-full hover:bg-gray-100">
           <Search size={20} className="text-gray-600" />
@@ -32,6 +29,7 @@ function Header({ onHelpClick, onTourClick }) {
         
         <div className="relative">
             <button 
+                data-tour-id="help-button"
                 onClick={() => setHelpMenuOpen(!helpMenuOpen)} 
                 className="bg-highlight text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-colors flex items-center shadow-sm help-button-pulse"
             >

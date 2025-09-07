@@ -35,7 +35,7 @@ function Layout() {
   
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
-      <div className="sidebar"> {/* Added selector for the tour */}
+      <div data-tour-id="sidebar"> {/* Added selector for the tour */}
         <Sidebar />
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">
