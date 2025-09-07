@@ -7,7 +7,7 @@ import { useAppContext } from '../contexts/AppContext';
 // --- SETTINGS ---
 const SETTINGS = {
   // Geofence radius in meters
-  geofenceRadiusM: 200,
+  geofenceRadiusM: 20000,
   shiftPolicy: {
     start: "09:00",
     end: "17:30",
@@ -69,7 +69,7 @@ const StatCard = ({ icon, title, value, subtext }) => (
 
 
 // --- Manager View Calendar Component ---
-const ManagerCalendar = ({ entries, onDayClick }) => {
+const ManagerCalendar = ({ entries, onDayClick, selectedDate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -99,6 +99,7 @@ const ManagerCalendar = ({ entries, onDayClick }) => {
   }, [currentYear, currentMonth, entries]);
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const selectedDateString = selectedDate.toISOString().split('T')[0];
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
@@ -111,16 +112,37 @@ const ManagerCalendar = ({ entries, onDayClick }) => {
         </div>
         <div className="grid grid-cols-7 gap-px text-center text-sm">
             {weekDays.map(day => <div key={day} className="font-semibold text-gray-500 pb-2">{day}</div>)}
-            {calendarGrid.map(cell => (
-                <button 
-                    key={cell.key} 
-                    onClick={() => cell.day && onDayClick(cell.date)}
-                    className={`h-12 w-12 mx-auto flex items-center justify-center rounded-full transition-colors ${!cell.day ? 'cursor-default' : 'hover:bg-blue-100'} ${cell.hasEntry ? 'bg-blue-500 text-white font-bold' : 'text-gray-700'}`}
-                    disabled={!cell.day}
-                >
-                    {cell.day}
-                </button>
-            ))}
+            {calendarGrid.map(cell => {
+                const isSelected = cell.date?.toISOString().split('T')[0] === selectedDateString;
+                const cellClasses = ['h-12 w-12 mx-auto flex items-center justify-center rounded-full transition-colors'];
+
+                if (!cell.day) {
+                    cellClasses.push('cursor-default');
+                } else {
+                    cellClasses.push('hover:bg-blue-100');
+                    if (isSelected) {
+                        cellClasses.push('bg-green-100 ring-2 ring-green-400 text-gray-700');
+                        if (cell.hasEntry) {
+                            cellClasses.push('font-bold');
+                        }
+                    } else if (cell.hasEntry) {
+                        cellClasses.push('bg-blue-500 text-white font-bold');
+                    } else {
+                        cellClasses.push('text-gray-700');
+                    }
+                }
+
+                return (
+                    <button 
+                        key={cell.key} 
+                        onClick={() => cell.day && onDayClick(cell.date)}
+                        className={cellClasses.join(' ')}
+                        disabled={!cell.day}
+                    >
+                        {cell.day}
+                    </button>
+                )
+            })}
         </div>
     </div>
   );
@@ -242,7 +264,9 @@ export default function SmartClock() {
 
   const { status, can, weeklyHours, onTimeStreak } = useMemo(() => {
     let currentStatus = "idle";
-    const todayPunches = allMyPunches.filter(p => p.timestamp && p.timestamp.toDate() >= new Date().setHours(0,0,0,0));
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayPunches = allMyPunches.filter(p => p.timestamp && p.timestamp.toDate() >= startOfDay);
     if (todayPunches.length > 0) {
       const last = todayPunches[0]; // Already sorted desc
       if (last.type === "clock-in" || last.type === "break-end") currentStatus = "working";
@@ -261,7 +285,6 @@ export default function SmartClock() {
     };
     
     // --- Live KPI Calculations ---
-    const today = new Date();
     const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
     startOfWeek.setHours(0,0,0,0);
     const weeklyPunches = allMyPunches.filter(p => p.timestamp && p.timestamp.toDate() >= startOfWeek).sort((a,b) => a.timestamp.toDate() - b.timestamp.toDate());
@@ -339,8 +362,13 @@ export default function SmartClock() {
 
   const entriesForSelectedDate = useMemo(() => {
     if (!selectedDate || !selectedEmployee) return [];
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    return selectedEmployeeEntries.filter(e => e.timestamp?.toDate().toISOString().split('T')[0] === dateStr).sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
+    const isSameDay = (date1, date2) => 
+        date1.getFullYear() === date2.getFullYear() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getDate() === date2.getDate();
+
+    return selectedEmployeeEntries.filter(e => isSameDay(e.timestamp?.toDate(), selectedDate))
+        .sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
   }, [selectedEmployeeEntries, selectedDate, selectedEmployee]);
 
   const managerKPIs = useMemo(() => {
@@ -451,7 +479,7 @@ export default function SmartClock() {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                             {selectedEmployee ? (
-                                <ManagerCalendar entries={selectedEmployeeEntries} onDayClick={setSelectedDate} />
+                                <ManagerCalendar entries={selectedEmployeeEntries} onDayClick={setSelectedDate} selectedDate={selectedDate} />
                             ) : (
                                 <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg border-2 border-dashed">
                                     <p className="text-gray-500">Select an employee to view their calendar.</p>

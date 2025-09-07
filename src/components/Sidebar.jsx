@@ -39,8 +39,8 @@ const NavLink = ({ to, children, icon, isBeta }) => {
 
 function Sidebar() {
   return (
-    <div className="w-64 bg-white text-white flex flex-col p-4 border-r border-gray-200">
-      <nav className="flex-1 mt-4">
+    <div className="w-64 bg-white text-white flex flex-col p-4 border-r border-gray-200 h-screen">
+      <nav className="mt-4">
         {navItems.map(item => (
             <NavLink key={item.path} to={item.path} icon={item.icon} isBeta={item.isBeta}>{item.label}</NavLink>
         ))}
